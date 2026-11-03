@@ -1,7 +1,7 @@
 # Story 001: 기마돌격 오토배틀 전투
 
 > **Epic**: 나만의 기사단
-> **Status**: In Progress
+> **Status**: Complete
 > **Layer**: Core
 > **Type**: Logic
 > **Estimate**: L
@@ -90,3 +90,13 @@
 
 - Depends on: None
 - Unlocks: `production/epics/my-knight-order/story-002-charge-timing-input.md`, `production/epics/my-knight-order/story-003-arrow-timing-input.md`, `production/epics/my-knight-order/story-005-stable-training.md`, `production/epics/my-knight-order/story-006-troop-training.md`
+
+---
+
+## Completion Notes
+**Completed**: 2026-11-03
+**Criteria**: 5/5 passing (AC-1, 2, 4, 5 by an executed .NET 8 harness outside the repo, not Unity; AC-3 by code inspection)
+**Deviations**: None. Advisory: Unity compile of `BattleDataLoader.cs` and the asmdef not verified (no editor); float damage may differ across platforms if cross-device determinism is needed; seeded random interface not added (no randomness used).
+**Test Evidence**: waived at qa.level minimal
+**Reviewed by**: self, no independent review (Solo mode); engine-API check by unity-specialist during /dev-story
+**Follow-ups (user-requested, not in AC)**: (1) damage should scale with troop count (use a data-driven curve to avoid snowballing); (2) retreat-and-recharge cycle with a data-driven `charges_before_melee` (1 = current behavior). Add as a new story ahead of Story 002.
