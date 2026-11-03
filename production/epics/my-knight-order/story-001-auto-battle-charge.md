@@ -1,12 +1,12 @@
 # Story 001: 기마돌격 오토배틀 전투
 
 > **Epic**: 나만의 기사단
-> **Status**: Ready
+> **Status**: In Progress
 > **Layer**: Core
 > **Type**: Logic
 > **Estimate**: L
 > **Manifest Version**: N/A (minimal — no control manifest)
-> **Last Updated**: [set by /dev-story when implementation begins]
+> **Last Updated**: 2026-11-03
 
 ## Context
 
@@ -54,9 +54,20 @@
 
 ## Files
 
-- `Assets/Scripts/Battle/` (전투 시뮬레이션, 유닛, 충돌 계산)
-- `Assets/Data/Battle/` (전투 수치 데이터)
-- `Assets/Tests/EditMode/Battle/AutoBattleTests.cs`
+- `Assets/Scripts/Battle/Core/KnightOrder.Battle.Core.asmdef`
+- `Assets/Scripts/Battle/Core/BattleSimulation.cs`
+- `Assets/Scripts/Battle/Core/BattleUnit.cs`
+- `Assets/Scripts/Battle/Core/BattleResult.cs`
+- `Assets/Scripts/Battle/Core/BattleRules.cs`
+- `Assets/Scripts/Battle/Core/BattleSetup.cs`
+- `Assets/Scripts/Battle/Core/UnitSetup.cs`
+- `Assets/Scripts/Battle/Core/BattleSide.cs`
+- `Assets/Scripts/Battle/Core/BattleWinner.cs`
+- `Assets/Scripts/Battle/Core/ChargeImpactEventArgs.cs`
+- `Assets/Scripts/Battle/Loading/BattleDataLoader.cs`
+- `Assets/Data/Battle/battle_rules.json`
+- `Assets/Data/Battle/battle_sample_setup.json`
+- (no test file — test evidence waived at `qa.level: minimal`)
 
 ---
 

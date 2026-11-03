@@ -1,0 +1,12 @@
+{
+    "player_units": [
+        { "troops": 100, "charge_power": 32.0, "defense": 10.0, "start_x": 0, "start_y": 1 },
+        { "troops": 100, "charge_power": 32.0, "defense": 10.0, "start_x": 0, "start_y": 3 },
+        { "troops": 100, "charge_power": 32.0, "defense": 10.0, "start_x": 0, "start_y": 5 }
+    ],
+    "enemy_units": [
+        { "troops": 100, "charge_power": 26.0, "defense": 12.0, "start_x": 12, "start_y": 1 },
+        { "troops": 100, "charge_power": 26.0, "defense": 12.0, "start_x": 12, "start_y": 3 },
+        { "troops": 100, "charge_power": 26.0, "defense": 12.0, "start_x": 12, "start_y": 5 }
+    ]
+}
