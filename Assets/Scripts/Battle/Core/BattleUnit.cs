@@ -1,8 +1,27 @@
 namespace KnightOrder.Battle
 {
     /// <summary>
+    /// Where a unit is in the charge cycle: approach, impact, retreat, re-approach, melee.
+    /// Implements: Story 008.
+    /// </summary>
+    public enum UnitPhase
+    {
+        /// <summary>Advancing on the nearest enemy and impacting when in range (a re-charge after a retreat).</summary>
+        Charging,
+
+        /// <summary>Retreating after an impact; the unit does not attack but can be hit.</summary>
+        Disengaging,
+
+        /// <summary>
+        /// Done with its charges: no more retreats. Stays engaged while an enemy is within ImpactRange,
+        /// impacting every ImpactIntervalTicks, and advances on the next nearest enemy when none is in range.
+        /// </summary>
+        Melee
+    }
+
+    /// <summary>
     /// Runtime state of one cavalry unit. Only the simulation mutates it.
-    /// Implements: Story 001.
+    /// Implements: Story 001, Story 008.
     /// </summary>
     public sealed class BattleUnit
     {
@@ -14,6 +33,8 @@ namespace KnightOrder.Battle
             Defense = setup.Defense;
             X = setup.StartX;
             Y = setup.StartY;
+            StartX = setup.StartX;
+            StartY = setup.StartY;
         }
 
         /// <summary>The order this unit belongs to.</summary>
@@ -37,6 +58,27 @@ namespace KnightOrder.Battle
         /// <summary>True while the unit still has troops.</summary>
         public bool IsAlive => Troops > 0;
 
+        /// <summary>Current step of the charge cycle.</summary>
+        public UnitPhase Phase { get; internal set; }
+
+        /// <summary>Number of impacts this unit has made as the attacker (re-charges and melee included).</summary>
+        public int ChargesDone { get; internal set; }
+
         internal int CooldownTicks { get; set; }
+
+        /// <summary>
+        /// Starting grid column. When a unit sits on its target's cell, its retreat direction is
+        /// sign(own start - target's start) per axis.
+        /// </summary>
+        internal int StartX { get; }
+
+        /// <summary>Starting grid row; see <see cref="StartX"/>.</summary>
+        internal int StartY { get; }
+
+        internal int RetreatDirX { get; set; }
+
+        internal int RetreatDirY { get; set; }
+
+        internal int RetreatCellsRemaining { get; set; }
     }
 }

@@ -5,5 +5,9 @@
     "cells_per_tick": 1,
     "impact_range": 1,
     "impact_interval_ticks": 3,
-    "max_ticks": 200
+    "max_ticks": 200,
+    "reference_troops": 100.0,
+    "troop_exponent": 0.5,
+    "charges_before_melee": 2,
+    "disengage_distance": 3
 }

@@ -1,12 +1,12 @@
 # Story 008: 병력 규모 반영과 재돌격 사이클
 
 > **Epic**: 나만의 기사단
-> **Status**: Ready
+> **Status**: In Progress
 > **Layer**: Core
 > **Type**: Logic
 > **Estimate**: L
 > **Manifest Version**: N/A (minimal — no control manifest)
-> **Last Updated**: [set by /dev-story when implementation begins]
+> **Last Updated**: 2026-11-04
 
 ## Context
 
@@ -62,6 +62,7 @@
 - `Assets/Scripts/Battle/Core/BattleRules.cs`
 - `Assets/Scripts/Battle/Loading/BattleDataLoader.cs`
 - `Assets/Data/Battle/battle_rules.json`
+- (테스트 파일 없음 — `qa.level: minimal`에서 면제)
 
 ---
 

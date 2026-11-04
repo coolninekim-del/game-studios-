@@ -6,12 +6,21 @@ namespace KnightOrder.Battle
     /// <summary>
     /// Tick-based, input-free cavalry-charge auto-battle on a logical grid.
     /// Pure C# (no UnityEngine); positions are grid cells, never screen coordinates.
-    /// Implements: design/game-brief.md (MVP 3, auto-battle charge collision), Story 001.
+    /// Implements: design/game-brief.md (MVP 3, auto-battle charge collision), Story 001, Story 008.
     ///
-    /// Each tick: (1) impact cooldowns count down, (2) every living unit that has no enemy
-    /// within ImpactRange advances toward its nearest enemy, (3) every living unit whose
-    /// cooldown is 0 and has an enemy within ImpactRange impacts it. All impact events of a
-    /// tick are raised before any damage is applied, and all damage is applied simultaneously.
+    /// Each tick: (1) impact cooldowns count down, (2) a retreating unit backs away from the enemy it
+    /// just hit, while every other living unit that has no enemy within ImpactRange advances toward its
+    /// nearest enemy, (3) every living, non-retreating unit whose cooldown is 0 and has an enemy within
+    /// ImpactRange impacts it. All impact events of a tick are raised before any damage is applied, and
+    /// all damage is applied simultaneously. Damage uses the attacker's current troop count through
+    /// (troops / ReferenceTroops) ^ TroopExponent.
+    /// Charge cycle (Story 008): each impact adds 1 to the attacker's ChargesDone. While ChargesDone is
+    /// below ChargesBeforeMelee the attacker then retreats DisengageDistance cells (it cannot attack
+    /// meanwhile but can be hit) and charges again; if no retreat direction exists (same cell and same
+    /// start cell as its target) it skips the retreat and charges again at once. Afterwards it no longer
+    /// retreats: as in Story 001 it stays engaged while an enemy is within ImpactRange, impacting every
+    /// ImpactIntervalTicks, and advances on the next nearest enemy when none is in range (for example
+    /// after its target dies). OnChargeImpact is raised for every impact.
     /// The simulation uses no randomness: nearest-enemy ties go to the lowest unit index
     /// (player units first, in setup order), so the same setup always gives the same result.
     /// The battle ends when a side reaches 0 troops or, as a safety cap, after MaxTicks ticks
@@ -143,6 +152,20 @@ namespace KnightOrder.Battle
                     continue;
                 }
 
+                if (unit.Phase == UnitPhase.Disengaging)
+                {
+                    int cells = Math.Min(_rules.CellsPerTick, unit.RetreatCellsRemaining);
+                    _stepX[i] = unit.RetreatDirX * cells;
+                    _stepY[i] = unit.RetreatDirY * cells;
+                    unit.RetreatCellsRemaining -= cells;
+                    if (unit.RetreatCellsRemaining == 0)
+                    {
+                        unit.Phase = UnitPhase.Charging;
+                    }
+
+                    continue;
+                }
+
                 BattleUnit target = FindNearestEnemy(unit);
                 if (target == null || Distance(unit, target) <= _rules.ImpactRange)
                 {
@@ -165,7 +188,7 @@ namespace KnightOrder.Battle
             for (int i = 0; i < _units.Count; i++)
             {
                 BattleUnit unit = _units[i];
-                if (!unit.IsAlive || unit.CooldownTicks > 0)
+                if (!unit.IsAlive || unit.CooldownTicks > 0 || unit.Phase == UnitPhase.Disengaging)
                 {
                     continue;
                 }
@@ -182,18 +205,49 @@ namespace KnightOrder.Battle
             _impactDamages.Clear();
             for (int i = 0; i < _impactAttackers.Count; i++)
             {
-                var args = new ChargeImpactEventArgs(_impactAttackers[i], _impactDefenders[i]);
+                BattleUnit attacker = _impactAttackers[i];
+                var args = new ChargeImpactEventArgs(attacker, _impactDefenders[i]);
                 OnChargeImpact?.Invoke(this, args);
+                float troopMultiplier = (float)Math.Pow(attacker.Troops / _rules.ReferenceTroops, _rules.TroopExponent);
                 _impactDamages.Add(CalculateDamage(
-                    _impactAttackers[i].ChargePower * args.PowerMultiplier,
+                    attacker.ChargePower * args.PowerMultiplier * troopMultiplier,
                     _impactDefenders[i].Defense));
             }
 
             for (int i = 0; i < _impactAttackers.Count; i++)
             {
+                BattleUnit attacker = _impactAttackers[i];
                 BattleUnit defender = _impactDefenders[i];
                 defender.Troops = Math.Max(0, defender.Troops - _impactDamages[i]);
-                _impactAttackers[i].CooldownTicks = _rules.ImpactIntervalTicks;
+                attacker.CooldownTicks = _rules.ImpactIntervalTicks;
+                attacker.ChargesDone++;
+                if (attacker.ChargesDone >= _rules.ChargesBeforeMelee)
+                {
+                    attacker.Phase = UnitPhase.Melee;
+                    continue;
+                }
+
+                // Retreat direction, per axis: (a) away from the unit just hit; (b) on the same cell
+                // there is no "away", so use own start cell minus the target's start cell; (c) if that is
+                // also zero, there is no direction to retreat in, so skip the retreat and charge again.
+                int retreatDirX = Math.Sign(attacker.X - defender.X);
+                int retreatDirY = Math.Sign(attacker.Y - defender.Y);
+                if (retreatDirX == 0 && retreatDirY == 0)
+                {
+                    retreatDirX = Math.Sign(attacker.StartX - defender.StartX);
+                    retreatDirY = Math.Sign(attacker.StartY - defender.StartY);
+                }
+
+                if (retreatDirX == 0 && retreatDirY == 0)
+                {
+                    attacker.Phase = UnitPhase.Charging;
+                    continue;
+                }
+
+                attacker.Phase = UnitPhase.Disengaging;
+                attacker.RetreatDirX = retreatDirX;
+                attacker.RetreatDirY = retreatDirY;
+                attacker.RetreatCellsRemaining = _rules.DisengageDistance;
             }
         }
 

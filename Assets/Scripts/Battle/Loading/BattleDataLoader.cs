@@ -21,6 +21,13 @@ namespace KnightOrder.Battle.Loading
     /// impact_interval_ticks (int ticks between a unit's impacts), max_ticks (int safety cap on
     /// battle length). These checks prevent the known non-collision case; they do not prove every
     /// layout ends with a wipe-out, so termination is guaranteed by max_ticks.
+    /// Story 008 keys: reference_troops (float &gt; 0, troop count where the troop multiplier is 1),
+    /// troop_exponent (float &gt;= 0, multiplier = (attacker troops / reference_troops) ^ troop_exponent;
+    /// 0 = no effect, 1 = linear, below 1 = diminishing), charges_before_melee (int &gt;= 1, impacts with a
+    /// retreat after each before the unit stops retreating and fights in melee; 1 = melee after the first
+    /// impact), disengage_distance (int &gt;= 1 and &gt; impact_range, grid cells retreated after an impact,
+    /// so a retreat actually leaves impact range; always checked, even when charges_before_melee is 1
+    /// and it is unused).
     /// Wire format of a setup file: player_units and enemy_units, each a list of
     /// { troops (int), charge_power (float), defense (float), start_x (int), start_y (int) }.
     /// Implements: Story 001 (all numbers from external data).
@@ -37,6 +44,10 @@ namespace KnightOrder.Battle.Loading
             public int impact_range;
             public int impact_interval_ticks;
             public int max_ticks;
+            public float reference_troops;
+            public float troop_exponent;
+            public int charges_before_melee;
+            public int disengage_distance;
         }
 
         [Serializable]
@@ -74,6 +85,14 @@ namespace KnightOrder.Battle.Loading
                 + "), otherwise approaching units can leap past each other without ever colliding");
             Require(wire.impact_interval_ticks >= 1, "impact_interval_ticks must be >= 1");
             Require(wire.max_ticks >= 1, "max_ticks must be >= 1");
+            Require(wire.reference_troops > 0f, "reference_troops must be > 0");
+            Require(wire.troop_exponent >= 0f, "troop_exponent must be >= 0");
+            Require(wire.charges_before_melee >= 1, "charges_before_melee must be >= 1");
+            Require(wire.disengage_distance >= 1, "disengage_distance must be >= 1");
+            Require(
+                wire.disengage_distance > wire.impact_range,
+                "disengage_distance (" + wire.disengage_distance + ") must be > impact_range (" + wire.impact_range
+                + "), otherwise a retreating unit is still within impact range and never really re-charges");
 
             return new BattleRules
             {
@@ -83,7 +102,11 @@ namespace KnightOrder.Battle.Loading
                 CellsPerTick = wire.cells_per_tick,
                 ImpactRange = wire.impact_range,
                 ImpactIntervalTicks = wire.impact_interval_ticks,
-                MaxTicks = wire.max_ticks
+                MaxTicks = wire.max_ticks,
+                ReferenceTroops = wire.reference_troops,
+                TroopExponent = wire.troop_exponent,
+                ChargesBeforeMelee = wire.charges_before_melee,
+                DisengageDistance = wire.disengage_distance
             };
         }
 
