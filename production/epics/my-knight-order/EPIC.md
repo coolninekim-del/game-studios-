@@ -35,3 +35,4 @@
 | 005 | 말 중심 내정(말·주인공 육성) | Integration | Ready | N/A (minimal) |
 | 006 | 병력 육성 | Logic | Ready | N/A (minimal) |
 | 007 | 런 구조 | Integration | Ready | N/A (minimal) |
+| 008 | 병력 규모 반영과 재돌격 사이클 (002보다 먼저) | Logic | Ready | N/A (minimal) |
