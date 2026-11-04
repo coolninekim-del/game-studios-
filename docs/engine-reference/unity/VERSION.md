@@ -2,11 +2,11 @@
 
 | Field | Value |
 |-------|-------|
-| **Engine Version** | Unity 6.3 LTS |
-| **Installed at pin time** | NOT DETERMINED — 2026-11-03, no Unity editor found in the cloud Linux container (Hub editor directory probe failed); installed version unknown, not absent. |
-| **Release Date** | December 2025 |
-| **Latest editor on the pinned line** | 6000.3.26f1 (Oct 8, 2026) |
-| **Project Pinned** | 2026-02-13 |
+| **Engine Version** | Unity 6.6 (6000.6.7f1) — re-pinned 2026-11-04 from 6.3 LTS |
+| **Installed at pin time** | 6000.6.7f1 — 2026-11-04, `C:/Program Files/Unity/Hub/Editor/6000.6.7f1` on the Windows dev machine. 6.3 LTS was not installed there; the user chose to create the project on the installed 6.6 instead of downloading 6.3. The 6.3 LTS rows below stay as history. |
+| **Release Date** | 6.6: September 2026 (6.3 LTS: December 2025) |
+| **Latest editor on the pinned line** | 6.6: 6000.6.7f1 installed (6000.6.6f1 was latest on Oct 15, 2026); 6.3 LTS: 6000.3.26f1 |
+| **Project Pinned** | 2026-11-04 (6.6); 2026-02-13 (6.3 LTS) |
 | **Last Docs Verified** | 2026-10-17 (release timeline, newer releases, latest 6.3 LTS editor); 2026-02-13 (rest of directory) |
 | **LLM Knowledge Cutoff** | May 2025 |
 
@@ -35,7 +35,10 @@ version-qualified claim** — `NOT DETERMINED` means the gap is unknown, not abs
 
 ## Newer Releases After the Pin (6.4 to 6.7)
 
-**The pin does not change: it stays Unity 6.3 LTS, the newest LTS.** These are
+**Update 2026-11-04: the project is now pinned to 6.6 (see the table at the top).** 6.6 is a
+Supported Update, not an LTS: it is supported until 6.7 ships, so plan to move to 6.7 LTS then.
+The note below was written while the pin was 6.3 LTS.
+**(Historical) The pin does not change: it stays Unity 6.3 LTS, the newest LTS.** These are
 Supported Update releases that shipped after it. Nothing else in this directory
 covers their APIs, so treat any 6.4+ API as unconfirmed until checked against
 Unity's docs for that release. 6.0 LTS support ends in October 2026.

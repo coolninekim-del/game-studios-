@@ -17,7 +17,7 @@
 **ADR Decision Summary**: N/A (minimal — no ADRs)
 **ADR Version**: N/A (minimal — no ADRs)
 
-**Engine**: Unity 6.3 LTS | **Risk**: HIGH
+**Engine**: Unity 6.6 | **Risk**: HIGH
 **Engine Notes**: none (no ADR engine-compatibility analysis at minimal)
 
 **Control Manifest Rules (this layer)**: N/A (minimal — no control manifest)

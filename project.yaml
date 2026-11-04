@@ -9,7 +9,7 @@ framework:
 
 engine:
   name: "Unity"
-  version: "6.3 LTS"
+  version: "6.6"
   language: "C#"
   rendering: "URP"
   physics: "PhysX"
@@ -29,15 +29,14 @@ naming:
   files: PascalCase
   scenes: PascalCase
 
-# commands: intentionally unset. No Unity editor on this machine, so a full editor
-# path cannot be written, and the build target (PC + mobile) is undecided.
-# TODO: after creating the Unity project and locating the editor, re-run
-# /setup-engine or set via /settings:
-#   build:  <editor> -batchmode -quit -projectPath . -buildTarget <TARGET> -build<PLATFORM>Player <output>
-#   test:   <editor> -batchmode -runTests -projectPath . -testPlatform EditMode -testResults test-results/editmode.xml
-#   run:    <built player> -screen-width 1280 -screen-height 720 -screen-fullscreen 0
-#   smoke:  <editor> -batchmode -quit -projectPath . -logFile -
-# <editor> is the full quoted path to the Unity editor executable, never bare `Unity`.
+# Unity project created at the repo root with 6000.6.7f1 on 2026-11-04 (6.3 LTS
+# was not installed; the user chose the installed 6.6). Build target: Windows
+# player for now; mobile target still undecided.
+commands:
+  build: '"C:/Program Files/Unity/Hub/Editor/6000.6.7f1/Editor/Unity.exe" -batchmode -quit -projectPath . -executeMethod KnightOrder.Editor.BattleSceneBuilder.BuildWindowsPlayer -logFile -'
+  test: '"C:/Program Files/Unity/Hub/Editor/6000.6.7f1/Editor/Unity.exe" -batchmode -runTests -projectPath . -testPlatform EditMode -testResults test-results/editmode.xml'
+  run: 'Builds/Win64/KnightOrder.exe -screen-width 1280 -screen-height 720 -screen-fullscreen 0'
+  smoke: '"C:/Program Files/Unity/Hub/Editor/6000.6.7f1/Editor/Unity.exe" -batchmode -quit -projectPath . -logFile -'
 
 # NOTE: this template ships with no `modes:` block, and the six knobs below must
 # never be added to one.
