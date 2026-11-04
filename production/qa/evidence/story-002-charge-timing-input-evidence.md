@@ -31,11 +31,12 @@ by `ChargeTimingBattleView.HandleImpactJudged` on every judgement.
 
 ## Observations
 
-- In `battle_sample_setup.json` every unit is equidistant (Chebyshev) to all enemies, so Story 001's
-  lowest-index tie-break sends all three lanes to the row-1 unit and the units stack on one cell. The view
-  draws them truthfully, which makes the battle look like 1 vs 1 with overlapping troop labels. Not a
-  Story 002 defect; worth a Story 001 targeting tweak or a different sample layout.
-- Placeholder visuals (generated squares/rings, English feedback text) until pixel-art isometric assets exist.
+- Screenshots re-captured 2026-11-04 on the isometric tile view, after the Story 001 one-unit-per-tile change
+  (see the Story 001 Change Log). Each lane now charges the enemy in its own row and collides on adjacent
+  tiles; the earlier capture showed all lanes stacked on one cell. Same log: Success / Miss / Early at ticks
+  6 / 12 / 15. The arrow volleys of Story 003 also appear in these shots (ARROW HIT popups).
+- Placeholder visuals (generated pixel foot soldiers, diamond tiles, rings, English feedback text) until
+  the pixel-art assets exist.
 - Pointer input: scripted taps in this run call the same `ChargeTimingController.Tap()` as the
   `<Pointer>/press` action. A real mouse click and a real touch device were **not** exercised in this capture.
 

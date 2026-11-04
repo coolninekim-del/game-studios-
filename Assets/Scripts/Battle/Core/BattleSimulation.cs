@@ -12,7 +12,13 @@ namespace KnightOrder.Battle
     /// Each tick: (1) impact cooldowns count down, (2) a retreating unit backs away from the enemy it
     /// just hit, while every other living unit that has no enemy within ImpactRange advances toward its
     /// nearest enemy, (3) every living, non-retreating unit whose cooldown is 0 and has an enemy within
-    /// ImpactRange impacts it. All impact events of a tick are raised before any damage is applied, and
+    /// ImpactRange impacts it.
+    /// One unit per tile: a cell holds at most one living unit. Moves are planned from the tick-start
+    /// positions and then resolved together: a move into a cell that a staying unit holds, or that a
+    /// lower-index unit also moves into, is cancelled (repeated until no cancellation is left), and two units
+    /// moving into each other's cell both stay. A cancelled unit waits this tick; a cancelled retreat ends the
+    /// retreat (the unit charges again). So two units closing on each other stop on adjacent cells and
+    /// collide there. Setups must start every unit on its own cell. All impact events of a tick are raised before any damage is applied, and
     /// all damage is applied simultaneously. Damage uses the attacker's current troop count through
     /// (troops / ReferenceTroops) ^ TroopExponent.
     /// Charge cycle (Story 008): each impact adds 1 to the attacker's ChargesDone. While ChargesDone is
@@ -28,8 +34,10 @@ namespace KnightOrder.Battle
     /// DamageMultiplier) troops and the archer waits ArrowIntervalTicks. OnArrowVolley is raised for every
     /// volley; volley and impact events of a tick are all raised before any damage, and both kinds of
     /// damage are applied together, so an arrow and a charge on the same tick are resolved independently.
-    /// The simulation uses no randomness: nearest-enemy ties go to the lowest unit index
-    /// (player units first, in setup order), so the same setup always gives the same result.
+    /// The simulation uses no randomness: nearest enemy = lowest Chebyshev distance, ties to the lowest
+    /// Manhattan distance (so a unit prefers the enemy straight ahead in its own row), then to the lowest
+    /// unit index (player units first, in setup order); a contested cell also goes to the lowest index. The
+    /// same setup always gives the same result.
     /// The battle ends when a side reaches 0 troops or, as a safety cap, after MaxTicks ticks
     /// (then <see cref="BattleResult.ReachedTickCap"/> is set and the winner is None).
     ///
@@ -53,6 +61,7 @@ namespace KnightOrder.Battle
         private readonly BattleUnit[] _targets;
         private readonly int[] _stepX;
         private readonly int[] _stepY;
+        private readonly bool[] _moving;
 
         /// <summary>
         /// Creates a battle. The rules and setup are read once; later changes to them have no effect.
@@ -75,6 +84,7 @@ namespace KnightOrder.Battle
             _targets = new BattleUnit[_units.Count];
             _stepX = new int[_units.Count];
             _stepY = new int[_units.Count];
+            _moving = new bool[_units.Count];
         }
 
         private BattleSimulation(BattleSimulation other)
@@ -88,6 +98,7 @@ namespace KnightOrder.Battle
             _targets = new BattleUnit[_units.Count];
             _stepX = new int[_units.Count];
             _stepY = new int[_units.Count];
+            _moving = new bool[_units.Count];
             Tick = other.Tick;
         }
 
@@ -187,8 +198,8 @@ namespace KnightOrder.Battle
                 }
             }
 
-            // Movement is computed from the tick-start positions and applied together,
-            // so unit order does not bias who closes the distance first.
+            // Moves are planned from the tick-start positions, resolved for tile occupancy and applied
+            // together, so unit order only decides who gets a contested cell.
             for (int i = 0; i < _units.Count; i++)
             {
                 BattleUnit unit = _units[i];
@@ -204,12 +215,6 @@ namespace KnightOrder.Battle
                     int cells = Math.Min(_rules.CellsPerTick, unit.RetreatCellsRemaining);
                     _stepX[i] = unit.RetreatDirX * cells;
                     _stepY[i] = unit.RetreatDirY * cells;
-                    unit.RetreatCellsRemaining -= cells;
-                    if (unit.RetreatCellsRemaining == 0)
-                    {
-                        unit.Phase = UnitPhase.Charging;
-                    }
-
                     continue;
                 }
 
@@ -223,10 +228,23 @@ namespace KnightOrder.Battle
                 _stepY[i] = Math.Clamp(target.Y - unit.Y, -_rules.CellsPerTick, _rules.CellsPerTick);
             }
 
+            ResolveTileOccupancy();
+
             for (int i = 0; i < _units.Count; i++)
             {
-                _units[i].X += _stepX[i];
-                _units[i].Y += _stepY[i];
+                BattleUnit unit = _units[i];
+                if (unit.IsAlive && unit.Phase == UnitPhase.Disengaging)
+                {
+                    int cells = Math.Max(Math.Abs(_stepX[i]), Math.Abs(_stepY[i]));
+                    unit.RetreatCellsRemaining = cells == 0 ? 0 : unit.RetreatCellsRemaining - cells;
+                    if (unit.RetreatCellsRemaining == 0)
+                    {
+                        unit.Phase = UnitPhase.Charging;
+                    }
+                }
+
+                unit.X += _stepX[i];
+                unit.Y += _stepY[i];
             }
 
             // Collect impacts from the post-movement positions.
@@ -340,6 +358,60 @@ namespace KnightOrder.Battle
             }
         }
 
+        /// <summary>
+        /// Cancels planned moves (sets the step to 0) until no two living units would share a cell:
+        /// a move into a staying unit's cell, into a cell a lower-index unit also moves into, or into the cell
+        /// of a unit moving into this unit's cell is cancelled. Cancelling only ever adds staying units, so the
+        /// loop ends after at most one pass per unit.
+        /// </summary>
+        private void ResolveTileOccupancy()
+        {
+            for (int i = 0; i < _units.Count; i++)
+            {
+                _moving[i] = _units[i].IsAlive && (_stepX[i] != 0 || _stepY[i] != 0);
+            }
+
+            bool changed = true;
+            while (changed)
+            {
+                changed = false;
+                for (int i = 0; i < _units.Count; i++)
+                {
+                    if (!_moving[i])
+                    {
+                        continue;
+                    }
+
+                    BattleUnit unit = _units[i];
+                    int destX = unit.X + _stepX[i];
+                    int destY = unit.Y + _stepY[i];
+                    for (int j = 0; j < _units.Count; j++)
+                    {
+                        BattleUnit other = _units[j];
+                        if (j == i || !other.IsAlive)
+                        {
+                            continue;
+                        }
+
+                        int otherDestX = other.X + _stepX[j];
+                        int otherDestY = other.Y + _stepY[j];
+                        bool blocked = !_moving[j]
+                            ? other.X == destX && other.Y == destY
+                            : (otherDestX == destX && otherDestY == destY && j < i)
+                              || (other.X == destX && other.Y == destY && otherDestX == unit.X && otherDestY == unit.Y);
+                        if (blocked)
+                        {
+                            _moving[i] = false;
+                            _stepX[i] = 0;
+                            _stepY[i] = 0;
+                            changed = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
         private int CalculateDamage(float power, float defense)
         {
             float raw = power * _rules.PowerScale - defense * _rules.DefenseScale;
@@ -350,6 +422,7 @@ namespace KnightOrder.Battle
         {
             BattleUnit nearest = null;
             int nearestDistance = 0;
+            int nearestManhattan = 0;
             foreach (BattleUnit other in _units)
             {
                 if (other.Side == unit.Side || !other.IsAlive)
@@ -358,10 +431,13 @@ namespace KnightOrder.Battle
                 }
 
                 int distance = Distance(unit, other);
-                if (nearest == null || distance < nearestDistance)
+                int manhattan = Math.Abs(unit.X - other.X) + Math.Abs(unit.Y - other.Y);
+                if (nearest == null || distance < nearestDistance
+                    || (distance == nearestDistance && manhattan < nearestManhattan))
                 {
                     nearest = other;
                     nearestDistance = distance;
+                    nearestManhattan = manhattan;
                 }
             }
 

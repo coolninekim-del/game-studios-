@@ -33,7 +33,8 @@ namespace KnightOrder.Battle.Loading
     /// (int &gt;= 0, troops killed by an undefended volley), arrow_interval_ticks (int &gt;= 1 when arrows are
     /// on, ticks between a unit's volleys). A missing key reads as 0, so an older file means "no arrows".
     /// Wire format of a setup file: player_units and enemy_units, each a list of
-    /// { troops (int), charge_power (float), defense (float), start_x (int), start_y (int) }.
+    /// { troops (int), charge_power (float), defense (float), start_x (int), start_y (int) }; no two units
+    /// (of either side) may start on the same cell (one unit per tile).
     /// Implements: Story 001 (all numbers from external data), Story 003 (arrow numbers).
     /// </summary>
     public static class BattleDataLoader
@@ -137,11 +138,23 @@ namespace KnightOrder.Battle.Loading
         public static BattleSetup ParseSetup(string json)
         {
             SetupWire wire = FromJson<SetupWire>(json, "battle setup");
-            return new BattleSetup
+            var setup = new BattleSetup
             {
                 PlayerUnits = ConvertUnits(wire.player_units, "player_units"),
                 EnemyUnits = ConvertUnits(wire.enemy_units, "enemy_units")
             };
+            var cells = new HashSet<(int, int)>();
+            foreach (UnitSetup unit in setup.PlayerUnits)
+            {
+                Require(cells.Add((unit.StartX, unit.StartY)), "two units start on cell (" + unit.StartX + ", " + unit.StartY + ")");
+            }
+
+            foreach (UnitSetup unit in setup.EnemyUnits)
+            {
+                Require(cells.Add((unit.StartX, unit.StartY)), "two units start on cell (" + unit.StartX + ", " + unit.StartY + ")");
+            }
+
+            return setup;
         }
 
         private static List<UnitSetup> ConvertUnits(List<UnitWire> wires, string name)

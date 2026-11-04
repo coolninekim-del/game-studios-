@@ -98,6 +98,6 @@
   a tap between the two windows is arrow Success + charge Early).
 - View: an arrow flies from the archer and lands at the resolve moment; cyan shrinking ring on the target;
   BLOCK / EARLY / ARROW HIT popups and separate tones; the timing bar labels the soonest cue's kind.
-- Sample data: the three enemies all target the row-1 player (Story 001 tie-break), so one volley group is
-  three volleys at one unit; a sample battle has two volley groups (arrows only fly at charging units).
+- Sample data: each enemy targets the player unit in its row, so one volley group is one volley per lane; a
+  sample battle has two volley groups (arrows only fly at charging units).
 - Not verified: a real mouse click / real touch device on the built player (scripted taps only); audio.

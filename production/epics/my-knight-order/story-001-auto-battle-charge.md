@@ -82,7 +82,7 @@
 **Story Type**: Logic
 **Required evidence**: `Assets/Tests/EditMode/Battle/AutoBattleTests.cs` — advisory at `qa.level: minimal`. 전투가 화면에 보이는 형태로 구현되면 실행 후 스크린샷을 `production/qa/evidence/`에 남긴다.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — `Assets/Tests/EditMode/Battle/AutoBattleTests.cs` (2026-11-04, tile movement rules); battle screenshots in `production/qa/evidence/story-002-*.png` / `story-003-*.png`
 
 ---
 
@@ -100,3 +100,26 @@
 **Test Evidence**: waived at qa.level minimal
 **Reviewed by**: self, no independent review (Solo mode); engine-API check by unity-specialist during /dev-story
 **Follow-ups (user-requested, not in AC)**: (1) damage should scale with troop count (use a data-driven curve to avoid snowballing); (2) retreat-and-recharge cycle with a data-driven `charges_before_melee` (1 = current behavior). Add as a new story ahead of Story 002.
+
+---
+
+## Change Log
+
+### 2026-11-04 — One unit per tile (isometric tile battlefield)
+
+User decision (2026-11-04): the battle is shown on an isometric tile grid, one cell = one tile; units are
+placed on tiles and charge into each other. Units must not share a tile.
+Design note from the user: only the protagonist and hero characters ride horses, at most one per tile; troops
+(foot soldiers) can be several on one tile and are drawn overlapping. The simulation has no hero yet (Story
+004 / 005).
+
+- Movement: moves are planned from tick-start positions and resolved together. A move into a staying unit's
+  cell, into a cell a lower-index unit also moves into, or a swap with another unit is cancelled; a cancelled
+  retreat ends the retreat. Two units closing on each other now stop on adjacent cells and collide there
+  (before: they could end on the same cell).
+- Targeting: nearest enemy by Chebyshev distance, ties by Manhattan distance (the enemy straight ahead in the
+  unit's row), then lowest index. Before, equal distances went to the lowest index, so all three sample lanes
+  converged on one unit and stacked on one cell.
+- Data: `BattleDataLoader.ParseSetup` rejects two units starting on the same cell.
+- Tests: `AutoBattleTests.cs` (6 cases). Seen failing against the old movement code (6/6 failed), passing
+  after (full EditMode run 32/32).

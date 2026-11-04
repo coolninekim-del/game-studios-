@@ -7,14 +7,17 @@ using UnityEngine.InputSystem;
 namespace KnightOrder.Battle.Presentation
 {
     /// <summary>
-    /// Shows the auto-battle with the timing input: units, a shrinking white cue ring per charging player
-    /// unit (Story 002), an arrow flying from the enemy plus a shrinking cyan ring on the targeted player unit
+    /// Shows the auto-battle on an isometric tile grid with the timing input. Each grid cell is one diamond
+    /// tile and holds one unit; a unit is drawn as overlapping foot soldiers on its tile, one figure per
+    /// _troopsPerFigure troops (at most _maxFigures), with its exact troop count below. Mounted figures are
+    /// reserved for the protagonist and hero characters (one per tile), which the simulation does not have
+    /// yet. On top: a shrinking dark cue ring per charging player unit (Story 002), an arrow flying from the enemy plus a shrinking cyan ring on the targeted player unit
     /// for each arrow volley (Story 003), a timing bar for the soonest cue whose gold zone is its judgement
     /// window, and feedback with a sound: SUCCESS / EARLY / MISS for charges, BLOCK / EARLY / ARROW HIT for
     /// arrows. Touch and mouse are one input: an InputAction bound to &lt;Pointer&gt;/press.
     /// All rules live in <see cref="ChargeTimingController"/>; this class only draws and forwards taps.
-    /// Placeholder visuals (generated squares and rings) until the pixel-art isometric assets exist.
-    /// Implements: Story 002, Story 003.
+    /// Placeholder visuals (generated pixel figures, tiles and rings) until the pixel-art assets exist.
+    /// Implements: Story 002, Story 003; design/game-brief.md (isometric view).
     ///
     /// Usage: add to a GameObject in a scene with an orthographic main camera and assign the three JSON
     /// TextAssets (battle_rules, a battle setup, battle_charge_timing). A tap after the battle ends restarts it.
@@ -26,23 +29,43 @@ namespace KnightOrder.Battle.Presentation
         private const float FLASH_SECONDS = 0.25f;
         private const int ARROW_POOL_SIZE = 8;
 
-        private static readonly Color PlayerColor = new Color(0.25f, 0.5f, 1f);
-        private static readonly Color EnemyColor = new Color(0.9f, 0.25f, 0.2f);
-        private static readonly Color CueColor = new Color(1f, 1f, 1f, 0.55f);
-        private static readonly Color WindowColor = new Color(1f, 0.8f, 0.1f);
-        private static readonly Color SuccessColor = new Color(0.3f, 1f, 0.35f);
-        private static readonly Color EarlyColor = new Color(1f, 0.55f, 0.1f);
-        private static readonly Color MissColor = new Color(1f, 0.25f, 0.25f);
-        private static readonly Color ArrowCueColor = new Color(0.35f, 0.9f, 1f, 0.7f);
-        private static readonly Color ArrowColor = new Color(0.85f, 0.85f, 0.75f);
-        private static readonly Color BlockColor = new Color(0.35f, 0.9f, 1f);
+        private const int TILE_ORDER = -100;
+        private const int RING_ORDER = 5;
+        private const int FIGURE_ORDER = 1000;
+        private const int ARROW_ORDER = 2500;
+        private const int HUD_ORDER = 2900;
+        private const int TEXT_ORDER = 3000;
+
+        private static readonly Color PlayerColor = new Color(0.2f, 0.42f, 0.95f);
+        private static readonly Color EnemyColor = new Color(0.85f, 0.2f, 0.15f);
+        private static readonly Color FieldColor = new Color(0.66f, 0.62f, 0.53f);
+        private static readonly Color TileColor = new Color(0.9f, 0.87f, 0.79f);
+        private static readonly Color TextColor = new Color(0.12f, 0.11f, 0.1f);
+        private static readonly Color CueColor = new Color(0.12f, 0.11f, 0.1f, 0.6f);
+        private static readonly Color JudgementRingColor = new Color(0.12f, 0.11f, 0.1f, 0.3f);
+        private static readonly Color WindowColor = new Color(0.95f, 0.65f, 0f);
+        private static readonly Color SuccessColor = new Color(0.1f, 0.62f, 0.15f);
+        private static readonly Color EarlyColor = new Color(0.88f, 0.42f, 0f);
+        private static readonly Color MissColor = new Color(0.85f, 0.1f, 0.1f);
+        private static readonly Color ArrowCueColor = new Color(0f, 0.6f, 0.8f, 0.85f);
+        private static readonly Color ArrowColor = new Color(0.3f, 0.22f, 0.12f);
+        private static readonly Color BlockColor = new Color(0f, 0.55f, 0.78f);
+
+        // Feet positions of the figures inside a tile (world units, tile width 1); front ones last.
+        private static readonly Vector2[] FormationOffsets =
+        {
+            new Vector2(0f, 0.06f), new Vector2(-0.2f, 0.01f), new Vector2(0.2f, 0.01f),
+            new Vector2(-0.1f, -0.06f), new Vector2(0.1f, -0.06f), new Vector2(0f, -0.11f)
+        };
 
         [SerializeField] private TextAsset _battleRulesJson;
         [SerializeField] private TextAsset _battleSetupJson;
         [SerializeField] private TextAsset _chargeTimingJson;
-        [SerializeField] private float _cellSize = 0.75f;
+        [SerializeField] private float _tileWidth = 1f;
         [SerializeField] private float _unitSize = 0.55f;
-        [SerializeField] private float _cueStartRadius = 1.6f;
+        [SerializeField] private float _cueStartRadius = 1.4f;
+        [SerializeField] private int _troopsPerFigure = 20;
+        [SerializeField] private int _maxFigures = 6;
 
         private BattleRules _battleRules;
         private BattleSetup _battleSetup;
@@ -51,6 +74,9 @@ namespace KnightOrder.Battle.Presentation
         private InputAction _tapAction;
         private Sprite _squareSprite;
         private Sprite _ringSprite;
+        private Sprite _tileSprite;
+        private Sprite _figureSprite;
+        private Transform _tileRoot;
         private Font _font;
         private AudioSource _audio;
         private AudioClip _successClip;
@@ -94,6 +120,8 @@ namespace KnightOrder.Battle.Presentation
 
             _squareSprite = MakeSquareSprite();
             _ringSprite = MakeRingSprite(128, 0.08f);
+            _tileSprite = MakeTileSprite();
+            _figureSprite = MakeFigureSprite();
             _font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             _audio = gameObject.AddComponent<AudioSource>();
             _audio.playOnAwake = false;
@@ -173,6 +201,7 @@ namespace KnightOrder.Battle.Presentation
                 _units[i] = CreateUnitVisual(simUnits[i]);
             }
 
+            BuildTiles();
             FrameCamera();
             _banner.text = string.Empty;
             HandleTicked(this, EventArgs.Empty);
@@ -188,6 +217,11 @@ namespace KnightOrder.Battle.Presentation
                 BattleUnit unit = simUnits[i];
                 _units[i].Label.text = unit.Troops.ToString();
                 _units[i].Root.SetActive(unit.IsAlive);
+                int figures = Mathf.Clamp(Mathf.CeilToInt(unit.Troops / (float)Mathf.Max(1, _troopsPerFigure)), 1, _units[i].Figures.Length);
+                for (int f = 0; f < _units[i].Figures.Length; f++)
+                {
+                    _units[i].Figures[f].gameObject.SetActive(f < figures);
+                }
                 if (unit.Side == BattleSide.Player)
                 {
                     playerTroops += unit.Troops;
@@ -288,8 +322,16 @@ namespace KnightOrder.Battle.Presentation
                 BattleUnit unit = simUnits[i];
                 Vector3 from = GridToWorld(unit.X, unit.Y);
                 Vector3 to = GridToWorld(_controller.NextX(i), _controller.NextY(i));
-                visual.Root.transform.position = Vector3.Lerp(from, to, t);
-                visual.Body.color = Time.time < visual.FlashUntil ? visual.FlashColor : visual.BaseColor;
+                Vector3 position = Vector3.Lerp(from, to, t);
+                visual.Root.transform.position = position;
+                Color color = Time.time < visual.FlashUntil ? visual.FlashColor : visual.BaseColor;
+                for (int f = 0; f < visual.Figures.Length; f++)
+                {
+                    SpriteRenderer figure = visual.Figures[f];
+                    figure.color = color;
+                    // Lower on screen = nearer the camera = drawn later.
+                    figure.sortingOrder = FIGURE_ORDER - Mathf.RoundToInt((position.y + FormationOffsets[f].y * _tileWidth) * 100f);
+                }
                 visual.CueRing.enabled = false;
                 visual.TargetRing.enabled = false;
                 visual.ArrowRing.enabled = false;
@@ -320,21 +362,21 @@ namespace KnightOrder.Battle.Presentation
 
                     UnitVisual target = _units[impact.TargetIndex];
                     target.ArrowRing.enabled = true;
-                    target.ArrowRing.transform.localScale = Vector3.one * (radius * 2f);
+                    target.ArrowRing.transform.localScale = IsoScale(radius);
                     target.ArrowRing.color = impact.IsTapped ? Color.gray : open ? WindowColor : ArrowCueColor;
                     target.TargetRing.enabled = true;
-                    target.TargetRing.transform.localScale = Vector3.one * (targetRadius * 2f);
-                    target.TargetRing.color = open ? WindowColor : new Color(1f, 1f, 1f, 0.25f);
+                    target.TargetRing.transform.localScale = IsoScale(targetRadius);
+                    target.TargetRing.color = open ? WindowColor : JudgementRingColor;
                     continue;
                 }
 
                 UnitVisual visual = _units[impact.AttackerIndex];
                 visual.CueRing.enabled = true;
-                visual.CueRing.transform.localScale = Vector3.one * (radius * 2f);
+                visual.CueRing.transform.localScale = IsoScale(radius);
                 visual.CueRing.color = impact.IsTapped ? Color.gray : open ? WindowColor : CueColor;
                 visual.TargetRing.enabled = true;
-                visual.TargetRing.transform.localScale = Vector3.one * (targetRadius * 2f);
-                visual.TargetRing.color = open ? WindowColor : new Color(1f, 1f, 1f, 0.25f);
+                visual.TargetRing.transform.localScale = IsoScale(targetRadius);
+                visual.TargetRing.color = open ? WindowColor : JudgementRingColor;
             }
 
             for (int i = arrowCount; i < _arrows.Length; i++)
@@ -375,8 +417,9 @@ namespace KnightOrder.Battle.Presentation
         private void DrawArrow(SpriteRenderer arrow, PendingImpact impact, float progress01)
         {
             // Flies from the archer to the target so that it lands exactly when the volley resolves.
-            Vector3 from = _units[impact.AttackerIndex].Root.transform.position;
-            Vector3 to = _units[impact.TargetIndex].Root.transform.position;
+            Vector3 height = new Vector3(0f, _unitSize * 0.5f, 0f);
+            Vector3 from = _units[impact.AttackerIndex].Root.transform.position + height;
+            Vector3 to = _units[impact.TargetIndex].Root.transform.position + height;
             Vector3 direction = to - from;
             arrow.enabled = true;
             arrow.color = impact.IsWindowOpen(_controller.Now) ? WindowColor : ArrowColor;
@@ -407,9 +450,54 @@ namespace KnightOrder.Battle.Presentation
             }
         }
 
-        private Vector3 GridToWorld(int x, int y)
+        /// <summary>Isometric projection: grid x runs to the upper right, grid y to the lower right.</summary>
+        private Vector3 GridToWorld(float x, float y)
         {
-            return new Vector3(x * _cellSize, -y * _cellSize, 0f);
+            return new Vector3((x + y) * _tileWidth * 0.5f, (x - y) * _tileWidth * 0.25f, 0f);
+        }
+
+        /// <summary>A ring of the given radius lying flat on the isometric ground.</summary>
+        private static Vector3 IsoScale(float radius)
+        {
+            return new Vector3(radius * 2f, radius, 1f);
+        }
+
+        private void GetGridBounds(out int minX, out int maxX, out int minY, out int maxY)
+        {
+            // Start cells plus a margin, enough for the retreats of the charge cycle.
+            const int margin = 2;
+            minX = int.MaxValue;
+            maxX = int.MinValue;
+            minY = int.MaxValue;
+            maxY = int.MinValue;
+            foreach (BattleUnit unit in _controller.Simulation.Units)
+            {
+                minX = Mathf.Min(minX, unit.X - margin);
+                maxX = Mathf.Max(maxX, unit.X + margin);
+                minY = Mathf.Min(minY, unit.Y - margin);
+                maxY = Mathf.Max(maxY, unit.Y + margin);
+            }
+        }
+
+        private void BuildTiles()
+        {
+            if (_tileRoot != null)
+            {
+                Destroy(_tileRoot.gameObject);
+            }
+
+            _tileRoot = new GameObject("Tiles").transform;
+            _tileRoot.SetParent(transform, false);
+            GetGridBounds(out int minX, out int maxX, out int minY, out int maxY);
+            for (int x = minX; x <= maxX; x++)
+            {
+                for (int y = minY; y <= maxY; y++)
+                {
+                    SpriteRenderer tile = CreateSprite("Tile", _tileRoot, _tileSprite, TileColor, TILE_ORDER);
+                    tile.transform.position = GridToWorld(x, y);
+                    tile.transform.localScale = new Vector3(_tileWidth, _tileWidth, 1f);
+                }
+            }
         }
 
         private void FrameCamera()
@@ -420,22 +508,22 @@ namespace KnightOrder.Battle.Presentation
                 return;
             }
 
-            int minX = int.MaxValue, maxX = int.MinValue, minY = int.MaxValue, maxY = int.MinValue;
-            foreach (BattleUnit unit in _controller.Simulation.Units)
-            {
-                minX = Mathf.Min(minX, unit.X);
-                maxX = Mathf.Max(maxX, unit.X);
-                minY = Mathf.Min(minY, unit.Y);
-                maxY = Mathf.Max(maxY, unit.Y);
-            }
-
-            Vector3 center = (GridToWorld(minX, minY) + GridToWorld(maxX, maxY)) * 0.5f;
-            float halfWidth = (maxX - minX) * _cellSize * 0.5f + _cueStartRadius + 0.5f;
-            float halfHeight = (maxY - minY) * _cellSize * 0.5f + _cueStartRadius + 1.6f;
+            // Frame the units' start cells (not the whole tile margin) plus room for the HUD and timing bar.
+            GetGridBounds(out int minX, out int maxX, out int minY, out int maxY);
+            minX += 1;
+            maxX -= 1;
+            minY += 1;
+            maxY -= 1;
+            float left = GridToWorld(minX, minY).x - _tileWidth * 0.5f;
+            float right = GridToWorld(maxX, maxY).x + _tileWidth * 0.5f;
+            float top = GridToWorld(maxX, minY).y + _unitSize + 0.3f;
+            float bottom = GridToWorld(minX, maxY).y - _tileWidth * 0.25f - 0.3f;
+            float halfWidth = (right - left) * 0.5f + 0.3f;
+            float halfHeight = (top - bottom) * 0.5f + 1.3f;
             cam.orthographic = true;
             cam.orthographicSize = Mathf.Max(halfHeight, halfWidth / Mathf.Max(0.1f, cam.aspect));
-            cam.transform.position = new Vector3(center.x, center.y - 0.6f, -10f);
-            cam.backgroundColor = new Color(0.12f, 0.16f, 0.12f);
+            cam.transform.position = new Vector3((left + right) * 0.5f, (top + bottom) * 0.5f - 0.3f, -10f);
+            cam.backgroundColor = FieldColor;
             cam.clearFlags = CameraClearFlags.SolidColor;
 
             Transform hudRoot = _hud.transform.parent;
@@ -454,18 +542,18 @@ namespace KnightOrder.Battle.Presentation
         {
             var hudRoot = new GameObject("Hud").transform;
             hudRoot.SetParent(transform, false);
-            _hud = CreateText("Troops", hudRoot, 0.5f, Color.white);
-            _banner = CreateText("Banner", hudRoot, 0.9f, Color.white);
-            _barTrack = CreateSprite("TimingBarTrack", hudRoot, _squareSprite, new Color(0f, 0f, 0f, 0.6f), 10);
-            _barWindow = CreateSprite("TimingBarWindow", hudRoot, _squareSprite, WindowColor, 11);
-            _barMarker = CreateSprite("TimingBarMarker", hudRoot, _squareSprite, Color.white, 12);
-            _barLabel = CreateText("TimingBarLabel", hudRoot, 0.32f, Color.white);
+            _hud = CreateText("Troops", hudRoot, 0.5f, TextColor);
+            _banner = CreateText("Banner", hudRoot, 0.9f, TextColor);
+            _barTrack = CreateSprite("TimingBarTrack", hudRoot, _squareSprite, new Color(0f, 0f, 0f, 0.6f), HUD_ORDER);
+            _barWindow = CreateSprite("TimingBarWindow", hudRoot, _squareSprite, WindowColor, HUD_ORDER + 1);
+            _barMarker = CreateSprite("TimingBarMarker", hudRoot, _squareSprite, Color.white, HUD_ORDER + 2);
+            _barLabel = CreateText("TimingBarLabel", hudRoot, 0.32f, TextColor);
 
             _arrows = new SpriteRenderer[ARROW_POOL_SIZE];
             for (int i = 0; i < _arrows.Length; i++)
             {
-                _arrows[i] = CreateSprite("Arrow" + i, transform, _squareSprite, ArrowColor, 6);
-                _arrows[i].transform.localScale = new Vector3(0.6f, 0.08f, 1f);
+                _arrows[i] = CreateSprite("Arrow" + i, transform, _squareSprite, ArrowColor, ARROW_ORDER);
+                _arrows[i].transform.localScale = new Vector3(0.45f, 0.05f, 1f);
                 _arrows[i].enabled = false;
             }
 
@@ -483,17 +571,24 @@ namespace KnightOrder.Battle.Presentation
             var root = new GameObject(unit.Side + "Unit");
             root.transform.SetParent(transform, false);
             Color baseColor = unit.Side == BattleSide.Player ? PlayerColor : EnemyColor;
-            SpriteRenderer body = CreateSprite("Body", root.transform, _squareSprite, baseColor, 1);
-            body.transform.localScale = Vector3.one * _unitSize;
-            SpriteRenderer targetRing = CreateSprite("JudgementRing", root.transform, _ringSprite, Color.white, 2);
-            SpriteRenderer cueRing = CreateSprite("CueRing", root.transform, _ringSprite, CueColor, 3);
-            SpriteRenderer arrowRing = CreateSprite("ArrowCueRing", root.transform, _ringSprite, ArrowCueColor, 4);
-            TextMesh label = CreateText("Troops", root.transform, 0.28f, Color.white);
-            label.transform.localPosition = new Vector3(0f, -_unitSize * 0.95f, -0.1f);
+            var figures = new SpriteRenderer[Mathf.Clamp(_maxFigures, 1, FormationOffsets.Length)];
+            for (int f = 0; f < figures.Length; f++)
+            {
+                figures[f] = CreateSprite("Soldier" + f, root.transform, _figureSprite, baseColor, FIGURE_ORDER);
+                figures[f].transform.localPosition = FormationOffsets[f] * _tileWidth;
+                // Player soldiers face +x (upper right), enemy soldiers face the other way.
+                figures[f].flipX = unit.Side == BattleSide.Enemy;
+            }
+
+            SpriteRenderer targetRing = CreateSprite("JudgementRing", root.transform, _ringSprite, Color.white, RING_ORDER);
+            SpriteRenderer cueRing = CreateSprite("CueRing", root.transform, _ringSprite, CueColor, RING_ORDER + 1);
+            SpriteRenderer arrowRing = CreateSprite("ArrowCueRing", root.transform, _ringSprite, ArrowCueColor, RING_ORDER + 2);
+            TextMesh label = CreateText("Troops", root.transform, 0.24f, TextColor);
+            label.transform.localPosition = new Vector3(0f, -_tileWidth * 0.25f - 0.08f, -0.1f);
             return new UnitVisual
             {
-                Root = root, Body = body, CueRing = cueRing, TargetRing = targetRing, ArrowRing = arrowRing, Label = label,
-                BaseColor = baseColor
+                Root = root, Figures = figures, CueRing = cueRing, TargetRing = targetRing, ArrowRing = arrowRing,
+                Label = label, BaseColor = baseColor
             };
         }
 
@@ -521,7 +616,7 @@ namespace KnightOrder.Battle.Presentation
             text.color = color;
             var renderer = go.GetComponent<MeshRenderer>();
             renderer.sharedMaterial = _font.material;
-            renderer.sortingOrder = 20;
+            renderer.sortingOrder = TEXT_ORDER;
             return text;
         }
 
@@ -537,6 +632,74 @@ namespace KnightOrder.Battle.Presentation
             texture.SetPixels32(pixels);
             texture.Apply();
             return Sprite.Create(texture, new Rect(0, 0, 4, 4), new Vector2(0.5f, 0.5f), 4f);
+        }
+
+        /// <summary>A 2:1 diamond tile: light fill with a blue outline (world width 1 at scale 1).</summary>
+        private static Sprite MakeTileSprite()
+        {
+            const int width = 64;
+            const int height = 32;
+            var texture = new Texture2D(width, height) { filterMode = FilterMode.Point };
+            var pixels = new Color32[width * height];
+            var fill = new Color32(255, 255, 255, 255);
+            var line = new Color32(70, 120, 225, 255);
+            for (int y = 0; y < height; y++)
+            {
+                for (int x = 0; x < width; x++)
+                {
+                    float d = Mathf.Abs(x + 0.5f - width * 0.5f) / (width * 0.5f) + Mathf.Abs(y + 0.5f - height * 0.5f) / (height * 0.5f);
+                    pixels[y * width + x] = d > 1f ? new Color32(0, 0, 0, 0) : d > 0.93f ? line : fill;
+                }
+            }
+
+            texture.SetPixels32(pixels);
+            texture.Apply();
+            return Sprite.Create(texture, new Rect(0, 0, width, height), new Vector2(0.5f, 0.5f), width);
+        }
+
+        /// <summary>
+        /// A 12x20 pixel foot soldier with a lance, pivot at the feet. The head is white and the body grey,
+        /// so the side tint shows strongest on the head.
+        /// </summary>
+        private Sprite MakeFigureSprite()
+        {
+            const int width = 12;
+            const int height = 20;
+            var texture = new Texture2D(width, height) { filterMode = FilterMode.Point };
+            var pixels = new Color32[width * height];
+            var head = new Color32(255, 255, 255, 255);
+            var body = new Color32(60, 60, 60, 255);
+            var lance = new Color32(90, 80, 70, 255);
+            void Set(int x, int y, Color32 c) => pixels[y * width + x] = c;
+            for (int y = 15; y <= 17; y++)
+            {
+                for (int x = 3; x <= 5; x++)
+                {
+                    Set(x, y, head);
+                }
+            }
+
+            for (int y = 7; y <= 14; y++)
+            {
+                Set(4, y, body);
+            }
+
+            for (int x = 2; x <= 7; x++)
+            {
+                Set(x, 12, body);
+            }
+
+            Set(3, 6, body); Set(3, 5, body); Set(2, 4, body); Set(2, 3, body); Set(1, 2, body); Set(1, 1, body); Set(1, 0, body);
+            Set(5, 6, body); Set(5, 5, body); Set(6, 4, body); Set(6, 3, body); Set(7, 2, body); Set(7, 1, body); Set(7, 0, body);
+            for (int i = 0; i <= 7; i++)
+            {
+                Set(Mathf.Min(width - 1, 6 + i * 5 / 7), 10 + i, lance);
+            }
+
+            texture.SetPixels32(pixels);
+            texture.Apply();
+            float pixelsPerUnit = height / (_unitSize * 0.8f);
+            return Sprite.Create(texture, new Rect(0, 0, width, height), new Vector2(0.5f, 0f), pixelsPerUnit);
         }
 
         private static Sprite MakeRingSprite(int size, float thickness01)
@@ -580,7 +743,7 @@ namespace KnightOrder.Battle.Presentation
         private sealed class UnitVisual
         {
             public GameObject Root;
-            public SpriteRenderer Body;
+            public SpriteRenderer[] Figures;
             public SpriteRenderer CueRing;
             public SpriteRenderer TargetRing;
             public SpriteRenderer ArrowRing;
