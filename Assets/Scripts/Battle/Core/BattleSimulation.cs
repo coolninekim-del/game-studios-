@@ -67,6 +67,31 @@ namespace KnightOrder.Battle
             _stepY = new int[_units.Count];
         }
 
+        private BattleSimulation(BattleSimulation other)
+        {
+            _rules = other._rules;
+            foreach (BattleUnit unit in other._units)
+            {
+                _units.Add(new BattleUnit(unit));
+            }
+
+            _targets = new BattleUnit[_units.Count];
+            _stepX = new int[_units.Count];
+            _stepY = new int[_units.Count];
+            Tick = other.Tick;
+        }
+
+        /// <summary>
+        /// Copies the current state into an independent simulation with no event subscribers.
+        /// Stepping the copy predicts this battle's next impacts (the simulation is deterministic);
+        /// unit indices in <see cref="Units"/> are the same in both. Used by Story 002 timing input.
+        /// </summary>
+        /// <returns>A copy at the same tick that shares only the (read-only) rules.</returns>
+        public BattleSimulation Clone()
+        {
+            return new BattleSimulation(this);
+        }
+
         /// <summary>
         /// Raised when two units collide, BEFORE the impact's damage is resolved.
         /// Handlers may set <see cref="ChargeImpactEventArgs.PowerMultiplier"/>.

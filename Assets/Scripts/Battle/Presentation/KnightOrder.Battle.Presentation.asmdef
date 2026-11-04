@@ -1,0 +1,19 @@
+{
+    "name": "KnightOrder.Battle.Presentation",
+    "rootNamespace": "KnightOrder.Battle.Presentation",
+    "references": [
+        "KnightOrder.Battle.Core",
+        "KnightOrder.Battle.Timing",
+        "KnightOrder.Battle.Loading",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

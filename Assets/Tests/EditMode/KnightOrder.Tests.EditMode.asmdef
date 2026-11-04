@@ -1,0 +1,26 @@
+{
+    "name": "KnightOrder.Tests.EditMode",
+    "rootNamespace": "KnightOrder.Tests",
+    "references": [
+        "UnityEngine.TestRunner",
+        "UnityEditor.TestRunner",
+        "KnightOrder.Battle.Core",
+        "KnightOrder.Battle.Timing",
+        "KnightOrder.Battle.Loading"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "nunit.framework.dll"
+    ],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "UNITY_INCLUDE_TESTS"
+    ],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

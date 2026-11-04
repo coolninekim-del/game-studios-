@@ -37,6 +37,25 @@ namespace KnightOrder.Battle
             StartY = setup.StartY;
         }
 
+        /// <summary>Copies every field of <paramref name="other"/>, for <see cref="BattleSimulation.Clone"/>.</summary>
+        internal BattleUnit(BattleUnit other)
+        {
+            Side = other.Side;
+            Troops = other.Troops;
+            ChargePower = other.ChargePower;
+            Defense = other.Defense;
+            X = other.X;
+            Y = other.Y;
+            StartX = other.StartX;
+            StartY = other.StartY;
+            Phase = other.Phase;
+            ChargesDone = other.ChargesDone;
+            CooldownTicks = other.CooldownTicks;
+            RetreatDirX = other.RetreatDirX;
+            RetreatDirY = other.RetreatDirY;
+            RetreatCellsRemaining = other.RetreatCellsRemaining;
+        }
+
         /// <summary>The order this unit belongs to.</summary>
         public BattleSide Side { get; }
 

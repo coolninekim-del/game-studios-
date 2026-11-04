@@ -29,7 +29,7 @@
 | # | Story | Type | Status | ADR |
 |---|-------|------|--------|-----|
 | 001 | 기마돌격 오토배틀 전투 | Logic | Ready | N/A (minimal) |
-| 002 | 돌격 충돌 타이밍 입력 | Visual/Feel | Ready | N/A (minimal) |
+| 002 | 돌격 충돌 타이밍 입력 | Visual/Feel | In Review | N/A (minimal) |
 | 003 | 화살 대응 타이밍 입력 | Visual/Feel | Ready | N/A (minimal) |
 | 004 | 보스 일기토 | Visual/Feel | Ready | N/A (minimal) |
 | 005 | 말 중심 내정(말·주인공 육성) | Integration | Ready | N/A (minimal) |
