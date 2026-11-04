@@ -6,7 +6,8 @@ namespace KnightOrder.Battle
     /// <summary>
     /// Tick-based, input-free cavalry-charge auto-battle on a logical grid.
     /// Pure C# (no UnityEngine); positions are grid cells, never screen coordinates.
-    /// Implements: design/game-brief.md (MVP 3, auto-battle charge collision), Story 001, Story 008.
+    /// Implements: design/game-brief.md (MVP 3, auto-battle charge collision), Story 001, Story 008,
+    /// Story 003 (enemy arrow volleys).
     ///
     /// Each tick: (1) impact cooldowns count down, (2) a retreating unit backs away from the enemy it
     /// just hit, while every other living unit that has no enemy within ImpactRange advances toward its
@@ -21,6 +22,12 @@ namespace KnightOrder.Battle
     /// retreats: as in Story 001 it stays engaged while an enemy is within ImpactRange, impacting every
     /// ImpactIntervalTicks, and advances on the next nearest enemy when none is in range (for example
     /// after its target dies). OnChargeImpact is raised for every impact.
+    /// Arrows (Story 003): after movement, every living enemy unit whose arrow cooldown is 0 fires a volley
+    /// at its nearest living player unit when that unit is Charging and its distance is above ImpactRange
+    /// and at most ArrowRange (ArrowRange 0 = no arrows). The volley kills floor(ArrowDamage *
+    /// DamageMultiplier) troops and the archer waits ArrowIntervalTicks. OnArrowVolley is raised for every
+    /// volley; volley and impact events of a tick are all raised before any damage, and both kinds of
+    /// damage are applied together, so an arrow and a charge on the same tick are resolved independently.
     /// The simulation uses no randomness: nearest-enemy ties go to the lowest unit index
     /// (player units first, in setup order), so the same setup always gives the same result.
     /// The battle ends when a side reaches 0 troops or, as a safety cap, after MaxTicks ticks
@@ -40,6 +47,9 @@ namespace KnightOrder.Battle
         private readonly List<BattleUnit> _impactAttackers = new List<BattleUnit>();
         private readonly List<BattleUnit> _impactDefenders = new List<BattleUnit>();
         private readonly List<int> _impactDamages = new List<int>();
+        private readonly List<BattleUnit> _volleyArchers = new List<BattleUnit>();
+        private readonly List<BattleUnit> _volleyTargets = new List<BattleUnit>();
+        private readonly List<int> _volleyDamages = new List<int>();
         private readonly BattleUnit[] _targets;
         private readonly int[] _stepX;
         private readonly int[] _stepY;
@@ -98,6 +108,13 @@ namespace KnightOrder.Battle
         /// The sender is this simulation.
         /// </summary>
         public event EventHandler<ChargeImpactEventArgs> OnChargeImpact;
+
+        /// <summary>
+        /// Raised when an enemy unit fires an arrow volley at a charging player unit, BEFORE the volley's
+        /// damage is resolved. Handlers may set <see cref="ArrowVolleyEventArgs.DamageMultiplier"/>.
+        /// The sender is this simulation.
+        /// </summary>
+        public event EventHandler<ArrowVolleyEventArgs> OnArrowVolley;
 
         /// <summary>Number of ticks simulated so far.</summary>
         public int Tick { get; private set; }
@@ -163,6 +180,11 @@ namespace KnightOrder.Battle
                 {
                     unit.CooldownTicks--;
                 }
+
+                if (unit.ArrowCooldownTicks > 0)
+                {
+                    unit.ArrowCooldownTicks--;
+                }
             }
 
             // Movement is computed from the tick-start positions and applied together,
@@ -226,7 +248,42 @@ namespace KnightOrder.Battle
                 }
             }
 
+            // Collect arrow volleys from the same post-movement positions.
+            _volleyArchers.Clear();
+            _volleyTargets.Clear();
+            if (_rules.ArrowRange > 0)
+            {
+                foreach (BattleUnit archer in _units)
+                {
+                    if (archer.Side != BattleSide.Enemy || !archer.IsAlive || archer.ArrowCooldownTicks > 0)
+                    {
+                        continue;
+                    }
+
+                    BattleUnit target = FindNearestEnemy(archer);
+                    if (target == null || target.Phase != UnitPhase.Charging)
+                    {
+                        continue;
+                    }
+
+                    int distance = Distance(archer, target);
+                    if (distance > _rules.ImpactRange && distance <= _rules.ArrowRange)
+                    {
+                        _volleyArchers.Add(archer);
+                        _volleyTargets.Add(target);
+                    }
+                }
+            }
+
             // Raise every event (damage not yet applied), then apply all damage together.
+            _volleyDamages.Clear();
+            for (int i = 0; i < _volleyArchers.Count; i++)
+            {
+                var volley = new ArrowVolleyEventArgs(_volleyArchers[i], _volleyTargets[i]);
+                OnArrowVolley?.Invoke(this, volley);
+                _volleyDamages.Add(Math.Max(0, (int)Math.Floor(_rules.ArrowDamage * volley.DamageMultiplier)));
+            }
+
             _impactDamages.Clear();
             for (int i = 0; i < _impactAttackers.Count; i++)
             {
@@ -237,6 +294,13 @@ namespace KnightOrder.Battle
                 _impactDamages.Add(CalculateDamage(
                     attacker.ChargePower * args.PowerMultiplier * troopMultiplier,
                     _impactDefenders[i].Defense));
+            }
+
+            for (int i = 0; i < _volleyArchers.Count; i++)
+            {
+                BattleUnit target = _volleyTargets[i];
+                target.Troops = Math.Max(0, target.Troops - _volleyDamages[i]);
+                _volleyArchers[i].ArrowCooldownTicks = _rules.ArrowIntervalTicks;
             }
 
             for (int i = 0; i < _impactAttackers.Count; i++)

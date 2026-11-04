@@ -3,11 +3,13 @@ namespace KnightOrder.Battle
     /// <summary>
     /// Every tunable number of the auto-battle, loaded from external data
     /// (Assets/Data/Battle/battle_rules.json).
-    /// Implements: Story 001 (no hardcoded gameplay values), Story 008 (troop scaling, recharge cycle).
+    /// Implements: Story 001 (no hardcoded gameplay values), Story 008 (troop scaling, recharge cycle),
+    /// Story 003 (enemy arrow volleys).
     ///
     /// Impact damage (troops lost by the defender) =
     ///   max(MinDamage, floor(AttackPower * PowerScale - Defense * DefenseScale)), where
     ///   AttackPower = ChargePower * PowerMultiplier * (AttackerTroops / ReferenceTroops) ^ TroopExponent.
+    /// Arrow damage (troops lost by the target) = floor(ArrowDamage * DamageMultiplier).
     /// </summary>
     public sealed class BattleRules
     {
@@ -55,5 +57,18 @@ namespace KnightOrder.Battle
 
         /// <summary>Grid cells a unit retreats after an impact before charging again.</summary>
         public int DisengageDistance { get; set; }
+
+        /// <summary>
+        /// Chebyshev grid distance at or below which an enemy unit fires an arrow volley at its nearest
+        /// charging player unit (only while that unit is still beyond ImpactRange). 0 = no arrows;
+        /// otherwise must be &gt; ImpactRange.
+        /// </summary>
+        public int ArrowRange { get; set; }
+
+        /// <summary>Troops a volley kills when not defended (DamageMultiplier 1). Must be &gt;= 0.</summary>
+        public int ArrowDamage { get; set; }
+
+        /// <summary>Ticks an enemy unit waits after a volley before it can fire again. Must be &gt;= 1.</summary>
+        public int ArrowIntervalTicks { get; set; }
     }
 }

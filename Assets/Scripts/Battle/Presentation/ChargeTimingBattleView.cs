@@ -7,12 +7,14 @@ using UnityEngine.InputSystem;
 namespace KnightOrder.Battle.Presentation
 {
     /// <summary>
-    /// Shows the auto-battle with the charge timing input: units, a shrinking cue ring per charging player
-    /// unit, a timing bar whose gold zone is the judgement window, and SUCCESS / EARLY / MISS feedback with
-    /// a sound. Touch and mouse are one input: an InputAction bound to &lt;Pointer&gt;/press.
+    /// Shows the auto-battle with the timing input: units, a shrinking white cue ring per charging player
+    /// unit (Story 002), an arrow flying from the enemy plus a shrinking cyan ring on the targeted player unit
+    /// for each arrow volley (Story 003), a timing bar for the soonest cue whose gold zone is its judgement
+    /// window, and feedback with a sound: SUCCESS / EARLY / MISS for charges, BLOCK / EARLY / ARROW HIT for
+    /// arrows. Touch and mouse are one input: an InputAction bound to &lt;Pointer&gt;/press.
     /// All rules live in <see cref="ChargeTimingController"/>; this class only draws and forwards taps.
     /// Placeholder visuals (generated squares and rings) until the pixel-art isometric assets exist.
-    /// Implements: Story 002.
+    /// Implements: Story 002, Story 003.
     ///
     /// Usage: add to a GameObject in a scene with an orthographic main camera and assign the three JSON
     /// TextAssets (battle_rules, a battle setup, battle_charge_timing). A tap after the battle ends restarts it.
@@ -22,6 +24,7 @@ namespace KnightOrder.Battle.Presentation
         private const int POPUP_POOL_SIZE = 8;
         private const float POPUP_SECONDS = 0.7f;
         private const float FLASH_SECONDS = 0.25f;
+        private const int ARROW_POOL_SIZE = 8;
 
         private static readonly Color PlayerColor = new Color(0.25f, 0.5f, 1f);
         private static readonly Color EnemyColor = new Color(0.9f, 0.25f, 0.2f);
@@ -30,6 +33,9 @@ namespace KnightOrder.Battle.Presentation
         private static readonly Color SuccessColor = new Color(0.3f, 1f, 0.35f);
         private static readonly Color EarlyColor = new Color(1f, 0.55f, 0.1f);
         private static readonly Color MissColor = new Color(1f, 0.25f, 0.25f);
+        private static readonly Color ArrowCueColor = new Color(0.35f, 0.9f, 1f, 0.7f);
+        private static readonly Color ArrowColor = new Color(0.85f, 0.85f, 0.75f);
+        private static readonly Color BlockColor = new Color(0.35f, 0.9f, 1f);
 
         [SerializeField] private TextAsset _battleRulesJson;
         [SerializeField] private TextAsset _battleSetupJson;
@@ -49,6 +55,8 @@ namespace KnightOrder.Battle.Presentation
         private AudioSource _audio;
         private AudioClip _successClip;
         private AudioClip _failClip;
+        private AudioClip _blockClip;
+        private AudioClip _arrowHitClip;
 
         private UnitVisual[] _units;
         private SpriteRenderer _barTrack;
@@ -58,6 +66,7 @@ namespace KnightOrder.Battle.Presentation
         private TextMesh _hud;
         private TextMesh _banner;
         private Popup[] _popups;
+        private SpriteRenderer[] _arrows;
         private int _nextPopup;
         private float _barFlashUntil;
         private Color _barFlashColor;
@@ -74,6 +83,9 @@ namespace KnightOrder.Battle.Presentation
         /// <summary>Raised for every judged player impact, after the view has shown its feedback.</summary>
         public event EventHandler<ImpactJudgedEventArgs> OnImpactJudged;
 
+        /// <summary>Raised for every judged arrow volley at a player unit, after the view has shown its feedback.</summary>
+        public event EventHandler<ArrowJudgedEventArgs> OnArrowJudged;
+
         private void Awake()
         {
             _battleRules = BattleDataLoader.ParseRules(_battleRulesJson.text);
@@ -87,6 +99,8 @@ namespace KnightOrder.Battle.Presentation
             _audio.playOnAwake = false;
             _successClip = MakeTone("success", new[] { 880f, 1320f }, 0.16f);
             _failClip = MakeTone("fail", new[] { 180f }, 0.2f);
+            _blockClip = MakeTone("block", new[] { 1760f, 2350f }, 0.12f);
+            _arrowHitClip = MakeTone("arrow_hit", new[] { 260f, 140f }, 0.22f);
 
             _tapAction = new InputAction("Tap", InputActionType.Button, "<Pointer>/press");
             _tapAction.Enable();
@@ -135,11 +149,13 @@ namespace KnightOrder.Battle.Presentation
             if (_controller != null)
             {
                 _controller.OnImpactJudged -= HandleImpactJudged;
+                _controller.OnArrowJudged -= HandleArrowJudged;
                 _controller.OnTicked -= HandleTicked;
             }
 
             _controller = new ChargeTimingController(new BattleSimulation(_battleRules, _battleSetup), _timingRules);
             _controller.OnImpactJudged += HandleImpactJudged;
+            _controller.OnArrowJudged += HandleArrowJudged;
             _controller.OnTicked += HandleTicked;
 
             if (_units != null)
@@ -214,9 +230,42 @@ namespace KnightOrder.Battle.Presentation
                     break;
             }
 
-            UnitVisual attacker = _units[e.AttackerIndex];
-            attacker.FlashColor = color;
-            attacker.FlashUntil = Time.time + FLASH_SECONDS;
+            ShowFeedback(_units[e.AttackerIndex], text, color, _unitSize);
+            OnImpactJudged?.Invoke(this, e);
+        }
+
+        private void HandleArrowJudged(object sender, ArrowJudgedEventArgs e)
+        {
+            Color color;
+            string text;
+            switch (e.Outcome)
+            {
+                case TimingOutcome.Success:
+                    color = BlockColor;
+                    text = "BLOCK x" + e.DamageMultiplier.ToString("0.0#");
+                    _audio.PlayOneShot(_blockClip);
+                    break;
+                case TimingOutcome.Early:
+                    color = EarlyColor;
+                    text = "EARLY";
+                    _audio.PlayOneShot(_arrowHitClip);
+                    break;
+                default:
+                    color = MissColor;
+                    text = "ARROW HIT";
+                    _audio.PlayOneShot(_arrowHitClip);
+                    break;
+            }
+
+            // Below the unit, so it does not cover a charge popup of the same moment.
+            ShowFeedback(_units[e.TargetIndex], text, color, -_unitSize * 1.6f);
+            OnArrowJudged?.Invoke(this, e);
+        }
+
+        private void ShowFeedback(UnitVisual unit, string text, Color color, float yOffset)
+        {
+            unit.FlashColor = color;
+            unit.FlashUntil = Time.time + FLASH_SECONDS;
             _barFlashColor = color;
             _barFlashUntil = Time.time + FLASH_SECONDS;
 
@@ -224,11 +273,9 @@ namespace KnightOrder.Battle.Presentation
             _nextPopup = (_nextPopup + 1) % _popups.Length;
             popup.Text.text = text;
             popup.Text.color = color;
-            popup.Origin = attacker.Root.transform.position + new Vector3(0f, _unitSize, 0f);
+            popup.Origin = unit.Root.transform.position + new Vector3(0f, yOffset, 0f);
             popup.StartTime = Time.time;
             popup.Text.gameObject.SetActive(true);
-
-            OnImpactJudged?.Invoke(this, e);
         }
 
         private void DrawUnits()
@@ -245,12 +292,14 @@ namespace KnightOrder.Battle.Presentation
                 visual.Body.color = Time.time < visual.FlashUntil ? visual.FlashColor : visual.BaseColor;
                 visual.CueRing.enabled = false;
                 visual.TargetRing.enabled = false;
+                visual.ArrowRing.enabled = false;
             }
         }
 
         private void DrawCues()
         {
             float now = _controller.Now;
+            int arrowCount = 0;
             foreach (PendingImpact impact in _controller.Pending)
             {
                 if (!impact.IsCueVisible(now))
@@ -258,11 +307,28 @@ namespace KnightOrder.Battle.Presentation
                     continue;
                 }
 
-                UnitVisual visual = _units[impact.AttackerIndex];
-                float remaining01 = (impact.ImpactTime - now) / _timingRules.CueLeadSeconds;
+                float remaining01 = (impact.ImpactTime - now) / impact.CueLeadSeconds;
                 float targetRadius = _unitSize * 0.9f;
                 float radius = Mathf.Lerp(targetRadius, _cueStartRadius, remaining01);
                 bool open = impact.IsWindowOpen(now);
+                if (impact.Kind == TimingCueKind.Arrow)
+                {
+                    if (arrowCount < _arrows.Length)
+                    {
+                        DrawArrow(_arrows[arrowCount++], impact, 1f - remaining01);
+                    }
+
+                    UnitVisual target = _units[impact.TargetIndex];
+                    target.ArrowRing.enabled = true;
+                    target.ArrowRing.transform.localScale = Vector3.one * (radius * 2f);
+                    target.ArrowRing.color = impact.IsTapped ? Color.gray : open ? WindowColor : ArrowCueColor;
+                    target.TargetRing.enabled = true;
+                    target.TargetRing.transform.localScale = Vector3.one * (targetRadius * 2f);
+                    target.TargetRing.color = open ? WindowColor : new Color(1f, 1f, 1f, 0.25f);
+                    continue;
+                }
+
+                UnitVisual visual = _units[impact.AttackerIndex];
                 visual.CueRing.enabled = true;
                 visual.CueRing.transform.localScale = Vector3.one * (radius * 2f);
                 visual.CueRing.color = impact.IsTapped ? Color.gray : open ? WindowColor : CueColor;
@@ -271,12 +337,19 @@ namespace KnightOrder.Battle.Presentation
                 visual.TargetRing.color = open ? WindowColor : new Color(1f, 1f, 1f, 0.25f);
             }
 
+            for (int i = arrowCount; i < _arrows.Length; i++)
+            {
+                _arrows[i].enabled = false;
+            }
+
             PendingImpact active = _controller.GetActiveCue();
             bool barVisible = active != null || Time.time < _barFlashUntil;
             _barTrack.enabled = barVisible;
             _barWindow.enabled = barVisible;
             _barMarker.enabled = active != null;
-            _barLabel.text = active != null ? (active.IsTapped ? "" : "TAP / CLICK in the gold zone") : "";
+            _barLabel.text = active == null || active.IsTapped ? ""
+                : active.Kind == TimingCueKind.Arrow ? "ARROWS! TAP / CLICK in the gold zone to block"
+                : "CHARGE! TAP / CLICK in the gold zone";
             if (!barVisible)
             {
                 return;
@@ -284,8 +357,8 @@ namespace KnightOrder.Battle.Presentation
 
             float width = _barTrack.transform.localScale.x;
             float left = _barTrack.transform.localPosition.x - width * 0.5f;
-            float windowSeconds = active != null ? active.WindowSeconds : _timingRules.WindowSeconds;
-            float windowWidth = width * windowSeconds / _timingRules.CueLeadSeconds;
+            float windowWidth = active != null ? width * active.WindowSeconds / active.CueLeadSeconds
+                : width * _timingRules.WindowSeconds / _timingRules.CueLeadSeconds;
             _barWindow.transform.localScale = new Vector3(windowWidth, _barTrack.transform.localScale.y, 1f);
             _barWindow.transform.localPosition = new Vector3(left + width - windowWidth * 0.5f,
                 _barTrack.transform.localPosition.y, -0.01f);
@@ -293,10 +366,22 @@ namespace KnightOrder.Battle.Presentation
                 : active != null && active.IsWindowOpen(now) ? Color.white : WindowColor;
             if (active != null)
             {
-                float progress = Mathf.Clamp01((now - active.CueStartTime) / _timingRules.CueLeadSeconds);
+                float progress = Mathf.Clamp01((now - active.CueStartTime) / active.CueLeadSeconds);
                 _barMarker.transform.localPosition = new Vector3(left + width * progress,
                     _barTrack.transform.localPosition.y, -0.02f);
             }
+        }
+
+        private void DrawArrow(SpriteRenderer arrow, PendingImpact impact, float progress01)
+        {
+            // Flies from the archer to the target so that it lands exactly when the volley resolves.
+            Vector3 from = _units[impact.AttackerIndex].Root.transform.position;
+            Vector3 to = _units[impact.TargetIndex].Root.transform.position;
+            Vector3 direction = to - from;
+            arrow.enabled = true;
+            arrow.color = impact.IsWindowOpen(_controller.Now) ? WindowColor : ArrowColor;
+            arrow.transform.position = Vector3.Lerp(from, to, Mathf.Clamp01(progress01)) + new Vector3(0f, 0f, -0.05f);
+            arrow.transform.rotation = Quaternion.Euler(0f, 0f, Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg);
         }
 
         private void DrawPopups()
@@ -376,6 +461,14 @@ namespace KnightOrder.Battle.Presentation
             _barMarker = CreateSprite("TimingBarMarker", hudRoot, _squareSprite, Color.white, 12);
             _barLabel = CreateText("TimingBarLabel", hudRoot, 0.32f, Color.white);
 
+            _arrows = new SpriteRenderer[ARROW_POOL_SIZE];
+            for (int i = 0; i < _arrows.Length; i++)
+            {
+                _arrows[i] = CreateSprite("Arrow" + i, transform, _squareSprite, ArrowColor, 6);
+                _arrows[i].transform.localScale = new Vector3(0.6f, 0.08f, 1f);
+                _arrows[i].enabled = false;
+            }
+
             _popups = new Popup[POPUP_POOL_SIZE];
             for (int i = 0; i < _popups.Length; i++)
             {
@@ -394,11 +487,13 @@ namespace KnightOrder.Battle.Presentation
             body.transform.localScale = Vector3.one * _unitSize;
             SpriteRenderer targetRing = CreateSprite("JudgementRing", root.transform, _ringSprite, Color.white, 2);
             SpriteRenderer cueRing = CreateSprite("CueRing", root.transform, _ringSprite, CueColor, 3);
+            SpriteRenderer arrowRing = CreateSprite("ArrowCueRing", root.transform, _ringSprite, ArrowCueColor, 4);
             TextMesh label = CreateText("Troops", root.transform, 0.28f, Color.white);
             label.transform.localPosition = new Vector3(0f, -_unitSize * 0.95f, -0.1f);
             return new UnitVisual
             {
-                Root = root, Body = body, CueRing = cueRing, TargetRing = targetRing, Label = label, BaseColor = baseColor
+                Root = root, Body = body, CueRing = cueRing, TargetRing = targetRing, ArrowRing = arrowRing, Label = label,
+                BaseColor = baseColor
             };
         }
 
@@ -488,6 +583,7 @@ namespace KnightOrder.Battle.Presentation
             public SpriteRenderer Body;
             public SpriteRenderer CueRing;
             public SpriteRenderer TargetRing;
+            public SpriteRenderer ArrowRing;
             public TextMesh Label;
             public Color BaseColor;
             public Color FlashColor;

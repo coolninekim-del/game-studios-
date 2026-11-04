@@ -21,7 +21,7 @@ namespace KnightOrder.Battle
 
     /// <summary>
     /// Runtime state of one cavalry unit. Only the simulation mutates it.
-    /// Implements: Story 001, Story 008.
+    /// Implements: Story 001, Story 008, Story 003 (arrow cooldown).
     /// </summary>
     public sealed class BattleUnit
     {
@@ -51,6 +51,7 @@ namespace KnightOrder.Battle
             Phase = other.Phase;
             ChargesDone = other.ChargesDone;
             CooldownTicks = other.CooldownTicks;
+            ArrowCooldownTicks = other.ArrowCooldownTicks;
             RetreatDirX = other.RetreatDirX;
             RetreatDirY = other.RetreatDirY;
             RetreatCellsRemaining = other.RetreatCellsRemaining;
@@ -84,6 +85,9 @@ namespace KnightOrder.Battle
         public int ChargesDone { get; internal set; }
 
         internal int CooldownTicks { get; set; }
+
+        /// <summary>Ticks until this (enemy) unit can fire its next arrow volley (Story 003).</summary>
+        internal int ArrowCooldownTicks { get; set; }
 
         /// <summary>
         /// Starting grid column. When a unit sits on its target's cell, its retreat direction is

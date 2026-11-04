@@ -2,7 +2,8 @@ namespace KnightOrder.Battle.Timing
 {
     /// <summary>
     /// Pure judgement of one tap against one impact moment.
-    /// Implements: Story 002 (inside the window = Success, outside or no input = default).
+    /// Implements: Story 002 (inside the window = Success, outside or no input = default), Story 003 (the
+    /// same judgement for arrows).
     ///
     /// Usage:
     /// <code>
@@ -33,6 +34,15 @@ namespace KnightOrder.Battle.Timing
         /// <param name="successMultiplier">Multiplier from external data used on Success.</param>
         /// <returns><paramref name="successMultiplier"/> on Success, 1 (default impact) otherwise.</returns>
         public static float PowerMultiplier(TimingOutcome outcome, float successMultiplier)
+        {
+            return outcome == TimingOutcome.Success ? successMultiplier : 1.0f;
+        }
+
+        /// <summary>Arrow damage multiplier for an outcome.</summary>
+        /// <param name="outcome">The judged outcome.</param>
+        /// <param name="successMultiplier">Multiplier from external data used on Success.</param>
+        /// <returns><paramref name="successMultiplier"/> on Success, 1 (full arrow damage) otherwise.</returns>
+        public static float DamageMultiplier(TimingOutcome outcome, float successMultiplier)
         {
             return outcome == TimingOutcome.Success ? successMultiplier : 1.0f;
         }

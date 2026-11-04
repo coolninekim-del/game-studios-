@@ -28,9 +28,13 @@ namespace KnightOrder.Battle.Loading
     /// impact), disengage_distance (int &gt;= 1 and &gt; impact_range, grid cells retreated after an impact,
     /// so a retreat actually leaves impact range; always checked, even when charges_before_melee is 1
     /// and it is unused).
+    /// Story 003 keys: arrow_range (int &gt;= 0, Chebyshev distance at which an enemy unit fires a volley at
+    /// its nearest charging player unit; 0 = no arrows, otherwise must be &gt; impact_range), arrow_damage
+    /// (int &gt;= 0, troops killed by an undefended volley), arrow_interval_ticks (int &gt;= 1 when arrows are
+    /// on, ticks between a unit's volleys). A missing key reads as 0, so an older file means "no arrows".
     /// Wire format of a setup file: player_units and enemy_units, each a list of
     /// { troops (int), charge_power (float), defense (float), start_x (int), start_y (int) }.
-    /// Implements: Story 001 (all numbers from external data).
+    /// Implements: Story 001 (all numbers from external data), Story 003 (arrow numbers).
     /// </summary>
     public static class BattleDataLoader
     {
@@ -48,6 +52,9 @@ namespace KnightOrder.Battle.Loading
             public float troop_exponent;
             public int charges_before_melee;
             public int disengage_distance;
+            public int arrow_range;
+            public int arrow_damage;
+            public int arrow_interval_ticks;
         }
 
         [Serializable]
@@ -93,6 +100,16 @@ namespace KnightOrder.Battle.Loading
                 wire.disengage_distance > wire.impact_range,
                 "disengage_distance (" + wire.disengage_distance + ") must be > impact_range (" + wire.impact_range
                 + "), otherwise a retreating unit is still within impact range and never really re-charges");
+            Require(wire.arrow_range >= 0, "arrow_range must be >= 0 (0 = no arrows)");
+            if (wire.arrow_range > 0)
+            {
+                Require(
+                    wire.arrow_range > wire.impact_range,
+                    "arrow_range (" + wire.arrow_range + ") must be > impact_range (" + wire.impact_range
+                    + "), volleys are fired before the collision");
+                Require(wire.arrow_damage >= 0, "arrow_damage must be >= 0");
+                Require(wire.arrow_interval_ticks >= 1, "arrow_interval_ticks must be >= 1");
+            }
 
             return new BattleRules
             {
@@ -106,7 +123,10 @@ namespace KnightOrder.Battle.Loading
                 ReferenceTroops = wire.reference_troops,
                 TroopExponent = wire.troop_exponent,
                 ChargesBeforeMelee = wire.charges_before_melee,
-                DisengageDistance = wire.disengage_distance
+                DisengageDistance = wire.disengage_distance,
+                ArrowRange = wire.arrow_range,
+                ArrowDamage = wire.arrow_damage,
+                ArrowIntervalTicks = wire.arrow_interval_ticks
             };
         }
 
