@@ -1,0 +1,12 @@
+{
+    "approach_seconds": 2.4,
+    "guard_reveal_seconds": 1.4,
+    "window_seconds": 0.3,
+    "turnaround_seconds": 1.0,
+    "speed_power_scale": 0.02,
+    "agility_window_scale": 0.02,
+    "success_multiplier": 1.0,
+    "early_multiplier": 0.4,
+    "guarded_multiplier": 0.25,
+    "max_passes": 12
+}

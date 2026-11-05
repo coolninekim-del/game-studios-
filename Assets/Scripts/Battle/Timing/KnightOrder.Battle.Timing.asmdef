@@ -1,0 +1,16 @@
+{
+    "name": "KnightOrder.Battle.Timing",
+    "rootNamespace": "KnightOrder.Battle.Timing",
+    "references": [
+        "KnightOrder.Battle.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

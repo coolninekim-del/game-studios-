@@ -1,0 +1,9 @@
+{
+    "seconds_per_tick": 0.4,
+    "window_seconds": 0.22,
+    "cue_lead_seconds": 1.2,
+    "success_power_multiplier": 1.5,
+    "arrow_window_seconds": 0.25,
+    "arrow_cue_lead_seconds": 1.0,
+    "arrow_success_damage_multiplier": 0.25
+}

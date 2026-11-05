@@ -1,0 +1,16 @@
+{
+    "power_scale": 1.0,
+    "defense_scale": 0.5,
+    "min_damage": 1,
+    "cells_per_tick": 1,
+    "impact_range": 1,
+    "impact_interval_ticks": 3,
+    "max_ticks": 200,
+    "reference_troops": 100.0,
+    "troop_exponent": 0.5,
+    "charges_before_melee": 2,
+    "disengage_distance": 3,
+    "arrow_range": 4,
+    "arrow_damage": 12,
+    "arrow_interval_ticks": 6
+}

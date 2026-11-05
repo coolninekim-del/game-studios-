@@ -7,6 +7,37 @@ framework:
   version: 1.2.0
   last_upgraded: 2026-10-19
 
+engine:
+  name: "Unity"
+  version: "6.6"
+  language: "C#"
+  rendering: "URP"
+  physics: "PhysX"
+
+specialists:
+  code: "unity-specialist"
+  shader: "unity-shader-specialist"
+  ui: "unity-ui-specialist"
+  additional: ["unity-dots-specialist", "unity-addressables-specialist"]
+
+naming:
+  classes: PascalCase
+  variables: camelCase
+  constants: SCREAMING_SNAKE   # UNVERIFIED — not sourceable from
+                               # docs/engine-reference/unity/; confirm before relying on it
+  signals: OnEventName
+  files: PascalCase
+  scenes: PascalCase
+
+# Unity project created at the repo root with 6000.6.7f1 on 2026-11-04 (6.3 LTS
+# was not installed; the user chose the installed 6.6). Build target: Windows
+# player for now; mobile target still undecided.
+commands:
+  build: '"C:/Program Files/Unity/Hub/Editor/6000.6.7f1/Editor/Unity.exe" -batchmode -quit -projectPath . -executeMethod KnightOrder.Editor.BattleSceneBuilder.BuildWindowsPlayer -logFile -'
+  test: '"C:/Program Files/Unity/Hub/Editor/6000.6.7f1/Editor/Unity.exe" -batchmode -runTests -projectPath . -testPlatform EditMode -testResults test-results/editmode.xml'
+  run: 'Builds/Win64/KnightOrder.exe -screen-width 1280 -screen-height 720 -screen-fullscreen 0'
+  smoke: '"C:/Program Files/Unity/Hub/Editor/6000.6.7f1/Editor/Unity.exe" -batchmode -quit -projectPath . -logFile -'
+
 # NOTE: this template ships with no `modes:` block, and the six knobs below must
 # never be added to one.
 #

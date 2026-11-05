@@ -1,0 +1,16 @@
+{
+    "name": "KnightOrder.Duel.Core",
+    "rootNamespace": "KnightOrder.Duel",
+    "references": [
+        "KnightOrder.Battle.Timing"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

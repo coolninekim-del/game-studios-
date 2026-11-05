@@ -1,0 +1,8 @@
+{
+    "gold": 100,
+    "squads": [
+        { "troops": 100, "grade": 1 },
+        { "troops": 100, "grade": 1 },
+        { "troops": 100, "grade": 1 }
+    ]
+}

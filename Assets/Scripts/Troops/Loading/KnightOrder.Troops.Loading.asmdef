@@ -1,0 +1,16 @@
+{
+    "name": "KnightOrder.Troops.Loading",
+    "rootNamespace": "KnightOrder.Troops.Loading",
+    "references": [
+        "KnightOrder.Troops.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
