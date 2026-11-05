@@ -1,12 +1,12 @@
 # Story 006: 병력 육성
 
 > **Epic**: 나만의 기사단
-> **Status**: Ready
+> **Status**: In Review
 > **Layer**: Feature
 > **Type**: Logic
 > **Estimate**: M
 > **Manifest Version**: N/A (minimal — no control manifest)
-> **Last Updated**: [set by /dev-story when implementation begins]
+> **Last Updated**: 2026-11-05
 
 ## Context
 
@@ -69,7 +69,7 @@
 **Story Type**: Logic
 **Required evidence**: `Assets/Tests/EditMode/Troops/TroopTests.cs` — advisory at `qa.level: minimal`.
 
-**Status**: [ ] Not yet created
+**Status**: [x] Created — `Assets/Tests/EditMode/Troops/TroopTests.cs` (24 cases), full EditMode run 89/89 passed
 
 ---
 
@@ -77,3 +77,30 @@
 
 - Depends on: `production/epics/my-knight-order/story-001-auto-battle-charge.md`
 - Unlocks: `production/epics/my-knight-order/story-007-run-structure.md`
+
+---
+
+## Implementation Notes (2026-11-05)
+
+- Decisions (user, 2026-11-05): troops are paid for with gold; each of the three foot squads has its own troop
+  count and grade; this story is logic and tests only (no screen, no scene change). The rules, numbers and file
+  list below were approved as drafted.
+- Roster (`troops_start_roster.json`): gold 100; three squads of 100 troops at grade 1. Squad i is the i-th foot
+  (non-mounted) player unit of the battle setup.
+- Rules (`troops_rules.json`): reinforcing costs `reinforce_gold_per_troop` (1) per soldier, up to
+  `max_troops_per_squad` (150); promoting from grade 1 / 2 / 3 costs `promote_gold_costs` 60 / 120 / 200, so the
+  highest grade is 4. A request without enough gold, above the squad maximum, at the highest grade or with a bad
+  squad / count is refused with a `TroopActionResult` reason and changes nothing.
+- Battle (`TroopDeployment.Deploy`): the setup's foot-unit values are grade 1 (power 32, defense 10 in the
+  sample); grade g gives charge power x (1 + (g - 1) x `power_per_grade` 0.15) and defense + (g - 1) x
+  `defense_per_grade` 2 (grade 2: 36.8 / 12). Troops come from the squad; a squad with 0 troops does not fight.
+  The mounted protagonist is not a squad and is left as it is.
+- Losses (`TroopDeployment.RecordSurvivors`): after the battle each squad keeps its unit's remaining troops, so
+  losses last until the next stable visit. `TroopRoster.IsWipedOut` (all squads at 0) is Story 007's fail state.
+- Code: pure C# `KnightOrder.Troops.Core` (no engine references), `KnightOrder.Troops.Loading`
+  (`TroopDataLoader`, snake_case DTOs).
+- Tests: written before the run; 5 seen failing against code with the gold check, the grade power bonus and the
+  survivor write-back disabled, then passing. Full EditMode run 89/89.
+- Not in this story (Story 007): earning gold, the troop part of the stable screen, wiring the roster into the
+  battle scene and returning from the battle to the stable. Nothing player-observable changed, so there is no
+  screenshot.

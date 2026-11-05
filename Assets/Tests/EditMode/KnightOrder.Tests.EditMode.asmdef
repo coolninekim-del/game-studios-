@@ -10,7 +10,9 @@
         "KnightOrder.Duel.Core",
         "KnightOrder.Duel.Loading",
         "KnightOrder.Stable.Core",
-        "KnightOrder.Stable.Loading"
+        "KnightOrder.Stable.Loading",
+        "KnightOrder.Troops.Core",
+        "KnightOrder.Troops.Loading"
     ],
     "includePlatforms": [
         "Editor"

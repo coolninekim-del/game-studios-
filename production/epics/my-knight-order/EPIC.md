@@ -33,6 +33,6 @@
 | 003 | 화살 대응 타이밍 입력 | Visual/Feel | In Review | N/A (minimal) |
 | 004 | 보스 일기토 | Visual/Feel | In Review | N/A (minimal) |
 | 005 | 말 중심 내정(말·주인공 육성) | Integration | In Review | N/A (minimal) |
-| 006 | 병력 육성 | Logic | Ready | N/A (minimal) |
+| 006 | 병력 육성 | Logic | In Review | N/A (minimal) |
 | 007 | 런 구조 | Integration | Ready | N/A (minimal) |
 | 008 | 병력 규모 반영과 재돌격 사이클 (002보다 먼저) | Logic | Ready | N/A (minimal) |
