@@ -1,6 +1,9 @@
 using System;
 using KnightOrder.Battle.Loading;
 using KnightOrder.Battle.Timing;
+using KnightOrder.Stable;
+using KnightOrder.Stable.Loading;
+using KnightOrder.UI;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -9,18 +12,23 @@ namespace KnightOrder.Battle.Presentation
     /// <summary>
     /// Shows the auto-battle on an isometric tile grid with the timing input. Each grid cell is one diamond
     /// tile and holds one unit; a unit is drawn as overlapping foot soldiers on its tile, one figure per
-    /// _troopsPerFigure troops (at most _maxFigures), with its exact troop count below. Mounted figures are
-    /// reserved for the protagonist and hero characters (one per tile), which the simulation does not have
-    /// yet. On top: a shrinking dark cue ring per charging player unit (Story 002), an arrow flying from the enemy plus a shrinking cyan ring on the targeted player unit
+    /// _troopsPerFigure troops (at most _maxFigures), with its exact troop count below. The protagonist
+    /// (Story 005) is one mounted unit drawn as a single horse and rider, labelled HERO with its health; its
+    /// stats come from the trained profile (<see cref="KnightProfileStore.Current"/>) or the start profile, and
+    /// its charge window is widened by horse agility (<see cref="HorseWindowModifier"/>); when the protagonist
+    /// charges in the same impact group as foot units, the part of its window beyond theirs is drawn on the
+    /// timing bar in blue ahead of the gold zone. On top: a shrinking dark cue ring per charging player unit (Story 002), an arrow flying from the enemy plus a shrinking cyan ring on the targeted player unit
     /// for each arrow volley (Story 003), a timing bar for the soonest cue whose gold zone is its judgement
     /// window, and feedback with a sound: SUCCESS / EARLY / MISS for charges, BLOCK / EARLY / ARROW HIT for
     /// arrows. Touch and mouse are one input: an InputAction bound to &lt;Pointer&gt;/press.
     /// All rules live in <see cref="ChargeTimingController"/>; this class only draws and forwards taps.
     /// Placeholder visuals (generated pixel figures, tiles and rings) until the pixel-art assets exist.
-    /// Implements: Story 002, Story 003; design/game-brief.md (isometric view).
+    /// Implements: Story 002, Story 003, Story 005 (mounted protagonist); design/game-brief.md (isometric view,
+    /// only the protagonist and heroes ride, one per tile).
     ///
-    /// Usage: add to a GameObject in a scene with an orthographic main camera and assign the three JSON
-    /// TextAssets (battle_rules, a battle setup, battle_charge_timing). A tap after the battle ends restarts it.
+    /// Usage: add to a GameObject in a scene with an orthographic main camera and assign the JSON TextAssets
+    /// (battle_rules, a battle setup, battle_charge_timing, stable_rules, stable_start_profile). A tap after the
+    /// battle ends restarts it.
     /// </summary>
     public sealed class ChargeTimingBattleView : MonoBehaviour
     {
@@ -44,6 +52,7 @@ namespace KnightOrder.Battle.Presentation
         private static readonly Color CueColor = new Color(0.12f, 0.11f, 0.1f, 0.6f);
         private static readonly Color JudgementRingColor = new Color(0.12f, 0.11f, 0.1f, 0.3f);
         private static readonly Color WindowColor = new Color(0.95f, 0.65f, 0f);
+        private static readonly Color HeroWindowColor = new Color(0.35f, 0.6f, 1f);
         private static readonly Color SuccessColor = new Color(0.1f, 0.62f, 0.15f);
         private static readonly Color EarlyColor = new Color(0.88f, 0.42f, 0f);
         private static readonly Color MissColor = new Color(0.85f, 0.1f, 0.1f);
@@ -61,6 +70,8 @@ namespace KnightOrder.Battle.Presentation
         [SerializeField] private TextAsset _battleRulesJson;
         [SerializeField] private TextAsset _battleSetupJson;
         [SerializeField] private TextAsset _chargeTimingJson;
+        [SerializeField] private TextAsset _stableRulesJson;
+        [SerializeField] private TextAsset _startProfileJson;
         [SerializeField] private float _tileWidth = 1f;
         [SerializeField] private float _unitSize = 0.55f;
         [SerializeField] private float _cueStartRadius = 1.4f;
@@ -70,12 +81,15 @@ namespace KnightOrder.Battle.Presentation
         private BattleRules _battleRules;
         private BattleSetup _battleSetup;
         private ChargeTimingRules _timingRules;
+        private HorseWindowModifier _windowModifier;
         private ChargeTimingController _controller;
         private InputAction _tapAction;
         private Sprite _squareSprite;
         private Sprite _ringSprite;
         private Sprite _tileSprite;
         private Sprite _figureSprite;
+        private Sprite _horseSprite;
+        private Sprite _riderSprite;
         private Transform _tileRoot;
         private Font _font;
         private AudioSource _audio;
@@ -87,6 +101,7 @@ namespace KnightOrder.Battle.Presentation
         private UnitVisual[] _units;
         private SpriteRenderer _barTrack;
         private SpriteRenderer _barWindow;
+        private SpriteRenderer _barHeroWindow;
         private SpriteRenderer _barMarker;
         private TextMesh _barLabel;
         private TextMesh _hud;
@@ -117,11 +132,18 @@ namespace KnightOrder.Battle.Presentation
             _battleRules = BattleDataLoader.ParseRules(_battleRulesJson.text);
             _battleSetup = BattleDataLoader.ParseSetup(_battleSetupJson.text);
             _timingRules = ChargeTimingDataLoader.ParseRules(_chargeTimingJson.text);
+            StableRules stableRules = StableDataLoader.ParseRules(_stableRulesJson.text);
+            KnightProfile profile = KnightProfileStore.Current ?? StableDataLoader.ParseProfile(_startProfileJson.text);
+            KnightConversion.AddToBattle(_battleSetup, profile, stableRules);
+            _windowModifier = new HorseWindowModifier(profile, stableRules);
 
             _squareSprite = MakeSquareSprite();
             _ringSprite = MakeRingSprite(128, 0.08f);
             _tileSprite = MakeTileSprite();
             _figureSprite = MakeFigureSprite();
+            float mountedPixelsPerUnit = 22f / (_unitSize * 1.35f);
+            _horseSprite = MountedSprites.MakeHorse(mountedPixelsPerUnit);
+            _riderSprite = MountedSprites.MakeRider(mountedPixelsPerUnit);
             _font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             _audio = gameObject.AddComponent<AudioSource>();
             _audio.playOnAwake = false;
@@ -181,7 +203,7 @@ namespace KnightOrder.Battle.Presentation
                 _controller.OnTicked -= HandleTicked;
             }
 
-            _controller = new ChargeTimingController(new BattleSimulation(_battleRules, _battleSetup), _timingRules);
+            _controller = new ChargeTimingController(new BattleSimulation(_battleRules, _battleSetup), _timingRules, _windowModifier);
             _controller.OnImpactJudged += HandleImpactJudged;
             _controller.OnArrowJudged += HandleArrowJudged;
             _controller.OnTicked += HandleTicked;
@@ -215,7 +237,7 @@ namespace KnightOrder.Battle.Presentation
             for (int i = 0; i < simUnits.Count; i++)
             {
                 BattleUnit unit = simUnits[i];
-                _units[i].Label.text = unit.Troops.ToString();
+                _units[i].Label.text = unit.IsMounted ? "HERO " + unit.Troops : unit.Troops.ToString();
                 _units[i].Root.SetActive(unit.IsAlive);
                 int figures = Mathf.Clamp(Mathf.CeilToInt(unit.Troops / (float)Mathf.Max(1, _troopsPerFigure)), 1, _units[i].Figures.Length);
                 for (int f = 0; f < _units[i].Figures.Length; f++)
@@ -332,6 +354,12 @@ namespace KnightOrder.Battle.Presentation
                     // Lower on screen = nearer the camera = drawn later.
                     figure.sortingOrder = FIGURE_ORDER - Mathf.RoundToInt((position.y + FormationOffsets[f].y * _tileWidth) * 100f);
                 }
+
+                if (visual.Horse != null)
+                {
+                    visual.Horse.sortingOrder = visual.Figures[0].sortingOrder - 1;
+                }
+
                 visual.CueRing.enabled = false;
                 visual.TargetRing.enabled = false;
                 visual.ArrowRing.enabled = false;
@@ -389,16 +417,28 @@ namespace KnightOrder.Battle.Presentation
             _barTrack.enabled = barVisible;
             _barWindow.enabled = barVisible;
             _barMarker.enabled = active != null;
+            float width = _barTrack.transform.localScale.x;
+            float left = _barTrack.transform.localPosition.x - width * 0.5f;
+            float heroWindow = HeroWindowInGroup(active);
+            _barHeroWindow.enabled = barVisible && active != null && heroWindow > active.WindowSeconds;
             _barLabel.text = active == null || active.IsTapped ? ""
                 : active.Kind == TimingCueKind.Arrow ? "ARROWS! TAP / CLICK in the gold zone to block"
+                : _barHeroWindow.enabled ? "CHARGE! TAP / CLICK in the gold zone (blue: hero only)"
                 : "CHARGE! TAP / CLICK in the gold zone";
             if (!barVisible)
             {
                 return;
             }
 
-            float width = _barTrack.transform.localScale.x;
-            float left = _barTrack.transform.localPosition.x - width * 0.5f;
+            if (_barHeroWindow.enabled)
+            {
+                float heroWidth = width * heroWindow / active.CueLeadSeconds;
+                _barHeroWindow.transform.localScale = new Vector3(heroWidth, _barTrack.transform.localScale.y, 1f);
+                _barHeroWindow.transform.localPosition = new Vector3(left + width - heroWidth * 0.5f,
+                    _barTrack.transform.localPosition.y, -0.005f);
+                _barHeroWindow.color = now >= active.ImpactTime - heroWindow ? Color.white : HeroWindowColor;
+            }
+
             float windowWidth = active != null ? width * active.WindowSeconds / active.CueLeadSeconds
                 : width * _timingRules.WindowSeconds / _timingRules.CueLeadSeconds;
             _barWindow.transform.localScale = new Vector3(windowWidth, _barTrack.transform.localScale.y, 1f);
@@ -412,6 +452,29 @@ namespace KnightOrder.Battle.Presentation
                 _barMarker.transform.localPosition = new Vector3(left + width * progress,
                     _barTrack.transform.localPosition.y, -0.02f);
             }
+        }
+
+        /// <summary>
+        /// The mounted player unit's charge window among the charges that impact at the same time as
+        /// <paramref name="active"/>, or 0 when there is none (or the active cue is an arrow).
+        /// </summary>
+        private float HeroWindowInGroup(PendingImpact active)
+        {
+            if (active == null || active.Kind != TimingCueKind.Charge)
+            {
+                return 0f;
+            }
+
+            foreach (PendingImpact impact in _controller.Pending)
+            {
+                if (impact.Kind == TimingCueKind.Charge && impact.ImpactTick == active.ImpactTick && !impact.IsTapped
+                    && _controller.Simulation.Units[impact.AttackerIndex].IsMounted)
+                {
+                    return impact.WindowSeconds;
+                }
+            }
+
+            return 0f;
         }
 
         private void DrawArrow(SpriteRenderer arrow, PendingImpact impact, float progress01)
@@ -545,8 +608,9 @@ namespace KnightOrder.Battle.Presentation
             _hud = CreateText("Troops", hudRoot, 0.5f, TextColor);
             _banner = CreateText("Banner", hudRoot, 0.9f, TextColor);
             _barTrack = CreateSprite("TimingBarTrack", hudRoot, _squareSprite, new Color(0f, 0f, 0f, 0.6f), HUD_ORDER);
-            _barWindow = CreateSprite("TimingBarWindow", hudRoot, _squareSprite, WindowColor, HUD_ORDER + 1);
-            _barMarker = CreateSprite("TimingBarMarker", hudRoot, _squareSprite, Color.white, HUD_ORDER + 2);
+            _barHeroWindow = CreateSprite("TimingBarHeroWindow", hudRoot, _squareSprite, HeroWindowColor, HUD_ORDER + 1);
+            _barWindow = CreateSprite("TimingBarWindow", hudRoot, _squareSprite, WindowColor, HUD_ORDER + 2);
+            _barMarker = CreateSprite("TimingBarMarker", hudRoot, _squareSprite, Color.white, HUD_ORDER + 3);
             _barLabel = CreateText("TimingBarLabel", hudRoot, 0.32f, TextColor);
 
             _arrows = new SpriteRenderer[ARROW_POOL_SIZE];
@@ -571,13 +635,26 @@ namespace KnightOrder.Battle.Presentation
             var root = new GameObject(unit.Side + "Unit");
             root.transform.SetParent(transform, false);
             Color baseColor = unit.Side == BattleSide.Player ? PlayerColor : EnemyColor;
-            var figures = new SpriteRenderer[Mathf.Clamp(_maxFigures, 1, FormationOffsets.Length)];
-            for (int f = 0; f < figures.Length; f++)
+            SpriteRenderer horse = null;
+            SpriteRenderer[] figures;
+            if (unit.IsMounted)
             {
-                figures[f] = CreateSprite("Soldier" + f, root.transform, _figureSprite, baseColor, FIGURE_ORDER);
-                figures[f].transform.localPosition = FormationOffsets[f] * _tileWidth;
-                // Player soldiers face +x (upper right), enemy soldiers face the other way.
-                figures[f].flipX = unit.Side == BattleSide.Enemy;
+                // One horse and rider per tile; the rider is the tinted figure, the horse stays brown.
+                horse = CreateSprite("Horse", root.transform, _horseSprite, Color.white, FIGURE_ORDER);
+                horse.flipX = unit.Side == BattleSide.Enemy;
+                figures = new[] { CreateSprite("Rider", root.transform, _riderSprite, baseColor, FIGURE_ORDER) };
+                figures[0].flipX = horse.flipX;
+            }
+            else
+            {
+                figures = new SpriteRenderer[Mathf.Clamp(_maxFigures, 1, FormationOffsets.Length)];
+                for (int f = 0; f < figures.Length; f++)
+                {
+                    figures[f] = CreateSprite("Soldier" + f, root.transform, _figureSprite, baseColor, FIGURE_ORDER);
+                    figures[f].transform.localPosition = FormationOffsets[f] * _tileWidth;
+                    // Player soldiers face +x (upper right), enemy soldiers face the other way.
+                    figures[f].flipX = unit.Side == BattleSide.Enemy;
+                }
             }
 
             SpriteRenderer targetRing = CreateSprite("JudgementRing", root.transform, _ringSprite, Color.white, RING_ORDER);
@@ -587,7 +664,7 @@ namespace KnightOrder.Battle.Presentation
             label.transform.localPosition = new Vector3(0f, -_tileWidth * 0.25f - 0.08f, -0.1f);
             return new UnitVisual
             {
-                Root = root, Figures = figures, CueRing = cueRing, TargetRing = targetRing, ArrowRing = arrowRing,
+                Root = root, Figures = figures, Horse = horse, CueRing = cueRing, TargetRing = targetRing, ArrowRing = arrowRing,
                 Label = label, BaseColor = baseColor
             };
         }
@@ -744,6 +821,7 @@ namespace KnightOrder.Battle.Presentation
         {
             public GameObject Root;
             public SpriteRenderer[] Figures;
+            public SpriteRenderer Horse;
             public SpriteRenderer CueRing;
             public SpriteRenderer TargetRing;
             public SpriteRenderer ArrowRing;

@@ -9,7 +9,7 @@ namespace KnightOrder.Duel
     /// S + ApproachSeconds - GuardRevealSeconds: the boss's shield side for this pass is shown (from the
     /// fixed <see cref="DuelSetup.BossGuardPattern"/>) and taps start to count;
     /// impact = S + ApproachSeconds: the pass resolves, the tap judged by <see cref="ChargeTimingJudge"/>
-    /// against the window [impact - WindowSeconds, impact];
+    /// against the window [impact - HeroWindowSeconds, impact] (HeroWindowSeconds widens with horse agility);
     /// the next pass starts TurnaroundSeconds after the impact.
     /// The protagonist taps once per pass and picks an aim with it (High or Low); the first tap between the
     /// reveal and the impact counts, any other tap is ignored. Damage follows <see cref="DuelRules"/>; with no
@@ -17,7 +17,7 @@ namespace KnightOrder.Duel
     /// The duel ends when either rider's health reaches 0 (both on the same pass = defeat) or after
     /// MaxPasses passes (defeat). No randomness: the same taps at the same times always give the same result.
     /// Pure C#, single-thread only; time advances only through <see cref="Advance"/>.
-    /// Implements: Story 004.
+    /// Implements: Story 004, Story 005 (horse agility widens the window).
     ///
     /// Usage:
     /// <code>
@@ -50,10 +50,11 @@ namespace KnightOrder.Duel
                 throw new ArgumentException("the boss guard pattern must not be empty", nameof(setup));
             }
 
-            HeroPower = LancePower(setup.Hero);
-            BossPower = LancePower(setup.Boss);
+            HeroPower = LancePowerOf(rules, setup.Hero);
+            BossPower = LancePowerOf(rules, setup.Boss);
             HeroMaxHp = setup.Hero.RiderHp + setup.Hero.HorseHp;
             BossMaxHp = setup.Boss.RiderHp + setup.Boss.HorseHp;
+            HeroWindowSeconds = HeroWindowOf(rules, setup.Hero);
             HeroHp = HeroMaxHp;
             BossHp = BossMaxHp;
         }
@@ -77,7 +78,13 @@ namespace KnightOrder.Duel
         public float GuardRevealTime => ImpactTime - _rules.GuardRevealSeconds;
 
         /// <summary>Start of the judgement window.</summary>
-        public float WindowStartTime => ImpactTime - _rules.WindowSeconds;
+        public float WindowStartTime => ImpactTime - HeroWindowSeconds;
+
+        /// <summary>
+        /// The protagonist's judgement window: min(GuardRevealSeconds, WindowSeconds * (1 + HorseAgility *
+        /// AgilityWindowScale)).
+        /// </summary>
+        public float HeroWindowSeconds { get; }
 
         /// <summary>Time at which the current pass resolves.</summary>
         public float ImpactTime => PassStartTime + _rules.ApproachSeconds;
@@ -184,15 +191,32 @@ namespace KnightOrder.Duel
             return _result ?? throw new InvalidOperationException("the duel is still running");
         }
 
-        private int LancePower(DuelistStats stats)
+        /// <summary>Lance power of a duelist: round(RiderAttack * (1 + HorseSpeed * SpeedPowerScale)).</summary>
+        /// <param name="rules">Duel rules.</param>
+        /// <param name="stats">The duelist.</param>
+        /// <returns>The lance power used for every pass.</returns>
+        public static int LancePowerOf(DuelRules rules, DuelistStats stats)
         {
-            return (int)Math.Round(stats.RiderAttack * (1.0 + stats.HorseSpeed * (double)_rules.SpeedPowerScale),
+            return (int)Math.Round(stats.RiderAttack * (1.0 + stats.HorseSpeed * (double)rules.SpeedPowerScale),
                 MidpointRounding.AwayFromZero);
+        }
+
+        /// <summary>
+        /// The protagonist's judgement window: min(GuardRevealSeconds, WindowSeconds * (1 + HorseAgility *
+        /// AgilityWindowScale)).
+        /// </summary>
+        /// <param name="rules">Duel rules.</param>
+        /// <param name="hero">The protagonist.</param>
+        /// <returns>Window width in seconds.</returns>
+        public static float HeroWindowOf(DuelRules rules, DuelistStats hero)
+        {
+            return Math.Min(rules.GuardRevealSeconds,
+                rules.WindowSeconds * (1f + hero.HorseAgility * rules.AgilityWindowScale));
         }
 
         private void ResolvePass()
         {
-            TimingOutcome outcome = ChargeTimingJudge.Judge(ImpactTime, _rules.WindowSeconds, _tapTime);
+            TimingOutcome outcome = ChargeTimingJudge.Judge(ImpactTime, HeroWindowSeconds, _tapTime);
             LanceAim guard = BossGuard;
             float multiplier = outcome == TimingOutcome.Success ? _rules.SuccessMultiplier
                 : outcome == TimingOutcome.Early ? _rules.EarlyMultiplier : 0f;

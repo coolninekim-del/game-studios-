@@ -1,0 +1,15 @@
+{
+    "actions_per_visit": 3,
+    "trainings": [
+        { "stat": "horse_speed", "gain": 5 },
+        { "stat": "horse_agility", "gain": 5 },
+        { "stat": "horse_hp", "gain": 15 },
+        { "stat": "rider_attack", "gain": 3 },
+        { "stat": "rider_hp", "gain": 15 }
+    ],
+    "battle_speed_power_scale": 0.02,
+    "battle_agility_window_scale": 0.02,
+    "battle_defense": 10.0,
+    "battle_start_x": 0,
+    "battle_start_y": 4
+}

@@ -1,5 +1,5 @@
 {
-    "hero": { "rider_attack": 30, "rider_hp": 100, "horse_speed": 20, "horse_hp": 40 },
+    "hero": { "rider_attack": 30, "rider_hp": 100, "horse_speed": 20, "horse_hp": 40, "horse_agility": 10 },
     "boss": { "rider_attack": 25, "rider_hp": 120, "horse_speed": 20, "horse_hp": 40 },
     "boss_guard_pattern": ["high", "low", "low", "high"],
     "victory_growth_reward": 3

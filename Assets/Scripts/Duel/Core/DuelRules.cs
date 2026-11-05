@@ -2,13 +2,14 @@ namespace KnightOrder.Duel
 {
     /// <summary>
     /// Every tunable number of the boss duel, loaded from external data (Assets/Data/Duel/duel_rules.json).
-    /// Implements: Story 004 (no hardcoded duel values).
+    /// Implements: Story 004 (no hardcoded duel values), Story 005 (agility window).
     ///
     /// Lance power = round(RiderAttack * (1 + HorseSpeed * SpeedPowerScale)); duel health = RiderHp + HorseHp.
     /// Per pass, damage to the boss = floor(protagonist power * timing multiplier * (GuardedMultiplier if the
     /// lance was aimed at the boss's shield, else 1)); the timing multiplier is SuccessMultiplier, EarlyMultiplier
     /// or 0 (no tap). Damage to the protagonist = boss power, or 0 when the tap was a Success (the boss's lance
-    /// is deflected).
+    /// is deflected). The protagonist's window = min(GuardRevealSeconds, WindowSeconds * (1 + HorseAgility *
+    /// AgilityWindowScale)).
     /// </summary>
     public sealed class DuelRules
     {
@@ -18,7 +19,7 @@ namespace KnightOrder.Duel
         /// <summary>Seconds before the impact at which the boss's shield side is shown and taps start to count.</summary>
         public float GuardRevealSeconds { get; set; }
 
-        /// <summary>Width of the judgement window, ending at the impact.</summary>
+        /// <summary>Base width of the judgement window, ending at the impact (before horse agility).</summary>
         public float WindowSeconds { get; set; }
 
         /// <summary>Seconds after the impact until the next pass starts (riders turn their horses).</summary>
@@ -26,6 +27,9 @@ namespace KnightOrder.Duel
 
         /// <summary>Lance power gained per point of horse speed, as a fraction of rider attack.</summary>
         public float SpeedPowerScale { get; set; }
+
+        /// <summary>Judgement window gained per point of horse agility, as a fraction of WindowSeconds.</summary>
+        public float AgilityWindowScale { get; set; }
 
         /// <summary>Timing multiplier on the protagonist's lance for a tap inside the window.</summary>
         public float SuccessMultiplier { get; set; }

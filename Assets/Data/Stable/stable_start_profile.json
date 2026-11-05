@@ -1,0 +1,7 @@
+{
+    "rider_attack": 30,
+    "rider_hp": 100,
+    "horse_speed": 20,
+    "horse_hp": 40,
+    "horse_agility": 10
+}

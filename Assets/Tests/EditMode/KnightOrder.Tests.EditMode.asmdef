@@ -8,7 +8,9 @@
         "KnightOrder.Battle.Timing",
         "KnightOrder.Battle.Loading",
         "KnightOrder.Duel.Core",
-        "KnightOrder.Duel.Loading"
+        "KnightOrder.Duel.Loading",
+        "KnightOrder.Stable.Core",
+        "KnightOrder.Stable.Loading"
     ],
     "includePlatforms": [
         "Editor"

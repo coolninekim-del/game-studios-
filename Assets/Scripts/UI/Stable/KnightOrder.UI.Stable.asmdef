@@ -1,0 +1,26 @@
+{
+    "name": "KnightOrder.UI.Stable",
+    "rootNamespace": "KnightOrder.UI.Stable",
+    "references": [
+        "KnightOrder.Stable.Core",
+        "KnightOrder.Stable.Loading",
+        "KnightOrder.Battle.Core",
+        "KnightOrder.Battle.Timing",
+        "KnightOrder.Battle.Loading",
+        "KnightOrder.Battle.Presentation",
+        "KnightOrder.Duel.Core",
+        "KnightOrder.Duel.Loading",
+        "KnightOrder.Duel.Presentation",
+        "KnightOrder.UI.Shared",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

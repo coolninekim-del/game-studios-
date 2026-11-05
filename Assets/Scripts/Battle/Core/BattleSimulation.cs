@@ -7,7 +7,7 @@ namespace KnightOrder.Battle
     /// Tick-based, input-free cavalry-charge auto-battle on a logical grid.
     /// Pure C# (no UnityEngine); positions are grid cells, never screen coordinates.
     /// Implements: design/game-brief.md (MVP 3, auto-battle charge collision), Story 001, Story 008,
-    /// Story 003 (enemy arrow volleys).
+    /// Story 003 (enemy arrow volleys), Story 005 (mounted protagonist).
     ///
     /// Each tick: (1) impact cooldowns count down, (2) a retreating unit backs away from the enemy it
     /// just hit, while every other living unit that has no enemy within ImpactRange advances toward its
@@ -20,7 +20,8 @@ namespace KnightOrder.Battle
     /// retreat (the unit charges again). So two units closing on each other stop on adjacent cells and
     /// collide there. Setups must start every unit on its own cell. All impact events of a tick are raised before any damage is applied, and
     /// all damage is applied simultaneously. Damage uses the attacker's current troop count through
-    /// (troops / ReferenceTroops) ^ TroopExponent.
+    /// (troops / ReferenceTroops) ^ TroopExponent; a mounted unit (Story 005, one rider whose Troops is its
+    /// health) does not scale: its factor is 1.
     /// Charge cycle (Story 008): each impact adds 1 to the attacker's ChargesDone. While ChargesDone is
     /// below ChargesBeforeMelee the attacker then retreats DisengageDistance cells (it cannot attack
     /// meanwhile but can be hit) and charges again; if no retreat direction exists (same cell and same
@@ -308,7 +309,8 @@ namespace KnightOrder.Battle
                 BattleUnit attacker = _impactAttackers[i];
                 var args = new ChargeImpactEventArgs(attacker, _impactDefenders[i]);
                 OnChargeImpact?.Invoke(this, args);
-                float troopMultiplier = (float)Math.Pow(attacker.Troops / _rules.ReferenceTroops, _rules.TroopExponent);
+                float troopMultiplier = attacker.IsMounted ? 1f
+                    : (float)Math.Pow(attacker.Troops / _rules.ReferenceTroops, _rules.TroopExponent);
                 _impactDamages.Add(CalculateDamage(
                     attacker.ChargePower * args.PowerMultiplier * troopMultiplier,
                     _impactDefenders[i].Defense));

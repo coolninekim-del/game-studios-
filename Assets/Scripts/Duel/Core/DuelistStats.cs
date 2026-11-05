@@ -1,9 +1,9 @@
 namespace KnightOrder.Duel
 {
     /// <summary>
-    /// One mounted duelist: the rider and the horse. Story 004 reads fixed test values from external data;
-    /// Story 005 will fill these from training.
-    /// Implements: Story 004 (protagonist and horse stats feed the duel numbers).
+    /// One mounted duelist: the rider and the horse. The boss reads fixed values from external data; the
+    /// protagonist is filled from the trained knight profile (Story 005, KnightConversion.ToDuelist).
+    /// Implements: Story 004 (protagonist and horse stats feed the duel numbers), Story 005 (horse agility).
     /// </summary>
     public sealed class DuelistStats
     {
@@ -18,5 +18,11 @@ namespace KnightOrder.Duel
 
         /// <summary>The horse's health, part of duel health.</summary>
         public int HorseHp { get; set; }
+
+        /// <summary>
+        /// The horse's agility, which widens the protagonist's judgement window
+        /// (see <see cref="DuelRules.AgilityWindowScale"/>). Not used for the boss.
+        /// </summary>
+        public int HorseAgility { get; set; }
     }
 }

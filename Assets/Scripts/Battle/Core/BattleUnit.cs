@@ -21,7 +21,7 @@ namespace KnightOrder.Battle
 
     /// <summary>
     /// Runtime state of one cavalry unit. Only the simulation mutates it.
-    /// Implements: Story 001, Story 008, Story 003 (arrow cooldown).
+    /// Implements: Story 001, Story 008, Story 003 (arrow cooldown), Story 005 (mounted unit).
     /// </summary>
     public sealed class BattleUnit
     {
@@ -31,6 +31,7 @@ namespace KnightOrder.Battle
             Troops = setup.Troops;
             ChargePower = setup.ChargePower;
             Defense = setup.Defense;
+            IsMounted = setup.IsMounted;
             X = setup.StartX;
             Y = setup.StartY;
             StartX = setup.StartX;
@@ -44,6 +45,7 @@ namespace KnightOrder.Battle
             Troops = other.Troops;
             ChargePower = other.ChargePower;
             Defense = other.Defense;
+            IsMounted = other.IsMounted;
             X = other.X;
             Y = other.Y;
             StartX = other.StartX;
@@ -68,6 +70,9 @@ namespace KnightOrder.Battle
 
         /// <summary>Defense value subtracted from incoming charge power.</summary>
         public float Defense { get; }
+
+        /// <summary>True for a single mounted rider; see <see cref="UnitSetup.IsMounted"/>.</summary>
+        public bool IsMounted { get; }
 
         /// <summary>Current grid column.</summary>
         public int X { get; internal set; }

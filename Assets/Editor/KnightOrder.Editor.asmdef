@@ -3,7 +3,8 @@
     "rootNamespace": "KnightOrder.Editor",
     "references": [
         "KnightOrder.Battle.Presentation",
-        "KnightOrder.Duel.Presentation"
+        "KnightOrder.Duel.Presentation",
+        "KnightOrder.UI.Stable"
     ],
     "includePlatforms": [
         "Editor"

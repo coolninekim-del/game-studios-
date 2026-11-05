@@ -1,8 +1,8 @@
 namespace KnightOrder.Battle
 {
     /// <summary>
-    /// Initial values of one cavalry unit. Positions are logical grid cells.
-    /// Implements: Story 001.
+    /// Initial values of one unit. Positions are logical grid cells.
+    /// Implements: Story 001, Story 005 (mounted protagonist).
     /// </summary>
     public sealed class UnitSetup
     {
@@ -20,5 +20,11 @@ namespace KnightOrder.Battle
 
         /// <summary>Starting grid row.</summary>
         public int StartY { get; set; }
+
+        /// <summary>
+        /// True for a single mounted rider (the protagonist, later heroes): Troops is its health and its
+        /// impact damage does not scale with the troop count. False for a foot-soldier unit.
+        /// </summary>
+        public bool IsMounted { get; set; }
     }
 }

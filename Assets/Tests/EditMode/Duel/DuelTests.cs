@@ -251,6 +251,23 @@ namespace KnightOrder.Tests.Duel
         }
 
         [Test]
+        public void HorseAgility_WidensWindow_TapThatWasEarlyIsSuccess()
+        {
+            DuelRules rules = MakeRules();
+            rules.AgilityWindowScale = 0.02f;
+            DuelSetup slow = MakeSetup();
+            DuelSetup agile = MakeSetup();
+            agile.Hero.HorseAgility = 10;
+            var plain = new DuelSimulation(rules, slow);
+            var trained = new DuelSimulation(rules, agile);
+
+            // Window 0.3 without agility; 0.3 * (1 + 10 * 0.02) = 0.36 with it. A tap 0.33 s before the impact.
+            Assert.AreEqual(0.36f, trained.HeroWindowSeconds, 1e-5f);
+            Assert.AreEqual(TimingOutcome.Early, PlayPass(plain, 0.33f, OpenSide(plain.BossGuard)).Outcome);
+            Assert.AreEqual(TimingOutcome.Success, PlayPass(trained, 0.33f, OpenSide(trained.BossGuard)).Outcome);
+        }
+
+        [Test]
         public void BothFallOnSamePass_Defeat()
         {
             // Arrange: an early strike finishes the boss while the boss's lance finishes the protagonist.

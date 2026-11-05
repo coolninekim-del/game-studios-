@@ -13,12 +13,15 @@ namespace KnightOrder.Duel.Loading
     /// guard_reveal_seconds (float, &gt; 0 and &lt;= approach_seconds, shield shown this long before the impact),
     /// window_seconds (float, &gt; 0 and &lt;= guard_reveal_seconds, judgement window ending at the impact),
     /// turnaround_seconds (float &gt;= 0, impact to next pass), speed_power_scale (float &gt;= 0),
+    /// agility_window_scale (float &gt;= 0, optional, default 0; the protagonist's window grows by this fraction
+    /// per point of horse agility and is capped at guard_reveal_seconds),
     /// success_multiplier (float &gt; 0), early_multiplier (float &gt;= 0), guarded_multiplier (float &gt;= 0),
     /// max_passes (int &gt;= 1).
     /// Wire format of a setup file: hero and boss, each { rider_attack (int &gt;= 0), rider_hp (int &gt;= 0),
-    /// horse_speed (int &gt;= 0), horse_hp (int &gt;= 0) } with rider_hp + horse_hp &gt;= 1;
+    /// horse_speed (int &gt;= 0), horse_hp (int &gt;= 0), horse_agility (int &gt;= 0, optional, default 0) } with
+    /// rider_hp + horse_hp &gt;= 1;
     /// boss_guard_pattern (non-empty list of "high" / "low"); victory_growth_reward (int &gt;= 0).
-    /// Implements: Story 004 (all duel numbers from external data).
+    /// Implements: Story 004 (all duel numbers from external data), Story 005 (agility).
     ///
     /// Usage:
     /// <code>
@@ -36,6 +39,7 @@ namespace KnightOrder.Duel.Loading
             public float window_seconds;
             public float turnaround_seconds;
             public float speed_power_scale;
+            public float agility_window_scale;
             public float success_multiplier;
             public float early_multiplier;
             public float guarded_multiplier;
@@ -49,6 +53,7 @@ namespace KnightOrder.Duel.Loading
             public int rider_hp;
             public int horse_speed;
             public int horse_hp;
+            public int horse_agility;
         }
 
         [Serializable]
@@ -75,6 +80,7 @@ namespace KnightOrder.Duel.Loading
                 + "), the shield must be shown before the window opens");
             Require(wire.turnaround_seconds >= 0f, "turnaround_seconds must be >= 0");
             Require(wire.speed_power_scale >= 0f, "speed_power_scale must be >= 0");
+            Require(wire.agility_window_scale >= 0f, "agility_window_scale must be >= 0");
             Require(wire.success_multiplier > 0f, "success_multiplier must be > 0 (a perfect strike must hurt)");
             Require(wire.early_multiplier >= 0f, "early_multiplier must be >= 0");
             Require(wire.guarded_multiplier >= 0f, "guarded_multiplier must be >= 0");
@@ -86,6 +92,7 @@ namespace KnightOrder.Duel.Loading
                 WindowSeconds = wire.window_seconds,
                 TurnaroundSeconds = wire.turnaround_seconds,
                 SpeedPowerScale = wire.speed_power_scale,
+                AgilityWindowScale = wire.agility_window_scale,
                 SuccessMultiplier = wire.success_multiplier,
                 EarlyMultiplier = wire.early_multiplier,
                 GuardedMultiplier = wire.guarded_multiplier,
@@ -127,13 +134,15 @@ namespace KnightOrder.Duel.Loading
             Require(wire.rider_hp >= 0, name + ".rider_hp must be >= 0");
             Require(wire.horse_speed >= 0, name + ".horse_speed must be >= 0");
             Require(wire.horse_hp >= 0, name + ".horse_hp must be >= 0");
+            Require(wire.horse_agility >= 0, name + ".horse_agility must be >= 0");
             Require(wire.rider_hp + wire.horse_hp >= 1, name + ": rider_hp + horse_hp must be >= 1");
             return new DuelistStats
             {
                 RiderAttack = wire.rider_attack,
                 RiderHp = wire.rider_hp,
                 HorseSpeed = wire.horse_speed,
-                HorseHp = wire.horse_hp
+                HorseHp = wire.horse_hp,
+                HorseAgility = wire.horse_agility
             };
         }
 

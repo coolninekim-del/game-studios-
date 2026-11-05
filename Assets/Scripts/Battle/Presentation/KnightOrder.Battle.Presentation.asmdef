@@ -5,7 +5,10 @@
         "KnightOrder.Battle.Core",
         "KnightOrder.Battle.Timing",
         "KnightOrder.Battle.Loading",
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "KnightOrder.Stable.Core",
+        "KnightOrder.Stable.Loading",
+        "KnightOrder.UI.Shared"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

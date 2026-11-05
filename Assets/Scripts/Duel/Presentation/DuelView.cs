@@ -1,6 +1,9 @@
 using System;
 using KnightOrder.Battle.Timing;
 using KnightOrder.Duel.Loading;
+using KnightOrder.Stable;
+using KnightOrder.Stable.Loading;
+using KnightOrder.UI;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -16,10 +19,13 @@ namespace KnightOrder.Duel.Presentation
     /// Touch and mouse are one input: an InputAction bound to &lt;Pointer&gt;/press.
     /// All rules live in <see cref="DuelSimulation"/>; this class only draws and forwards taps.
     /// Placeholder visuals (generated pixel riders and tiles) until the pixel-art assets exist.
-    /// Implements: Story 004; design/game-brief.md (isometric view, mounted protagonist).
+    /// The protagonist's stats come from the trained profile (<see cref="KnightProfileStore.Current"/>, set by
+    /// the stable) or, without a stable visit, from the start profile; the setup's hero entry is replaced.
+    /// Implements: Story 004, Story 005 (trained stats reach the duel); design/game-brief.md (isometric view,
+    /// mounted protagonist).
     ///
-    /// Usage: add to a GameObject in a scene with an orthographic main camera and assign duel_rules.json and
-    /// a duel setup TextAsset. A tap after the duel ends restarts it.
+    /// Usage: add to a GameObject in a scene with an orthographic main camera and assign duel_rules.json,
+    /// a duel setup TextAsset and stable_start_profile.json. A tap after the duel ends restarts it.
     /// </summary>
     public sealed class DuelView : MonoBehaviour
     {
@@ -57,6 +63,7 @@ namespace KnightOrder.Duel.Presentation
 
         [SerializeField] private TextAsset _duelRulesJson;
         [SerializeField] private TextAsset _duelSetupJson;
+        [SerializeField] private TextAsset _startProfileJson;
         [SerializeField] private float _tileWidth = 1f;
         [SerializeField] private int _laneHalfLength = 4;
         [SerializeField] private float _laneOffset = 1f;
@@ -119,11 +126,13 @@ namespace KnightOrder.Duel.Presentation
         {
             _rules = DuelDataLoader.ParseRules(_duelRulesJson.text);
             _setup = DuelDataLoader.ParseSetup(_duelSetupJson.text);
+            KnightProfile profile = KnightProfileStore.Current ?? StableDataLoader.ParseProfile(_startProfileJson.text);
+            _setup.Hero = KnightConversion.ToDuelist(profile);
 
             _squareSprite = MakeSquareSprite();
             _tileSprite = MakeTileSprite();
-            _horseSprite = MakeHorseSprite();
-            _riderSprite = MakeRiderSprite();
+            _horseSprite = MountedSprites.MakeHorse(RIDER_PIXELS_PER_UNIT);
+            _riderSprite = MountedSprites.MakeRider(RIDER_PIXELS_PER_UNIT);
             _font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             _audio = gameObject.AddComponent<AudioSource>();
             _audio.playOnAwake = false;
@@ -365,7 +374,7 @@ namespace KnightOrder.Duel.Presentation
 
             float width = _barTrack.transform.localScale.x;
             float left = _barTrack.transform.localPosition.x - width * 0.5f;
-            float windowWidth = width * _rules.WindowSeconds / _rules.GuardRevealSeconds;
+            float windowWidth = width * _duel.HeroWindowSeconds / _rules.GuardRevealSeconds;
             _barWindow.transform.localScale = new Vector3(windowWidth, _barTrack.transform.localScale.y, 1f);
             _barWindow.transform.localPosition = new Vector3(left + width - windowWidth * 0.5f, _barTrack.transform.localPosition.y, -0.01f);
             _barWindow.color = Time.time < _barFlashUntil ? _barFlashColor : _duel.IsWindowOpen ? Color.white : WindowColor;
@@ -610,63 +619,6 @@ namespace KnightOrder.Duel.Presentation
             texture.SetPixels32(pixels);
             texture.Apply();
             return Sprite.Create(texture, new Rect(0, 0, width, height), new Vector2(0.5f, 0.5f), width);
-        }
-
-        /// <summary>A 24x22 pixel horse facing right, pivot at the hooves (untinted brown).</summary>
-        private static Sprite MakeHorseSprite()
-        {
-            var pixels = new Color32[24 * 22];
-            var coat = new Color32(120, 82, 48, 255);
-            var dark = new Color32(70, 46, 26, 255);
-            Fill(pixels, 4, 6, 18, 10, coat);
-            Fill(pixels, 17, 9, 20, 13, coat);
-            Fill(pixels, 19, 12, 22, 14, coat);
-            Fill(pixels, 21, 12, 23, 13, dark);
-            Fill(pixels, 17, 14, 18, 15, dark);
-            Fill(pixels, 2, 7, 3, 10, dark);
-            Fill(pixels, 5, 0, 5, 5, dark);
-            Fill(pixels, 7, 0, 7, 5, coat);
-            Fill(pixels, 15, 0, 15, 5, dark);
-            Fill(pixels, 17, 0, 17, 5, coat);
-            return MakePixelSprite(pixels, 24, 22);
-        }
-
-        /// <summary>
-        /// A 24x22 pixel armoured rider seated on the horse, same canvas as the horse. The helmet is white and
-        /// the armour light grey, so the side tint shows on both.
-        /// </summary>
-        private static Sprite MakeRiderSprite()
-        {
-            var pixels = new Color32[24 * 22];
-            var armour = new Color32(200, 200, 200, 255);
-            var helmet = new Color32(255, 255, 255, 255);
-            var visor = new Color32(40, 40, 40, 255);
-            Fill(pixels, 9, 11, 12, 16, armour);
-            Fill(pixels, 10, 7, 11, 10, armour);
-            Fill(pixels, 9, 17, 12, 20, helmet);
-            Fill(pixels, 11, 18, 12, 18, visor);
-            Fill(pixels, 10, 21, 11, 21, helmet);
-            Fill(pixels, 12, 13, 13, 14, armour);
-            return MakePixelSprite(pixels, 24, 22);
-        }
-
-        private static void Fill(Color32[] pixels, int x0, int y0, int x1, int y1, Color32 color)
-        {
-            for (int y = y0; y <= y1; y++)
-            {
-                for (int x = x0; x <= x1; x++)
-                {
-                    pixels[y * 24 + x] = color;
-                }
-            }
-        }
-
-        private static Sprite MakePixelSprite(Color32[] pixels, int width, int height)
-        {
-            var texture = new Texture2D(width, height) { filterMode = FilterMode.Point };
-            texture.SetPixels32(pixels);
-            texture.Apply();
-            return Sprite.Create(texture, new Rect(0, 0, width, height), new Vector2(0.5f, 0f), RIDER_PIXELS_PER_UNIT);
         }
 
         private static AudioClip MakeTone(string name, float[] frequencies, float seconds)
