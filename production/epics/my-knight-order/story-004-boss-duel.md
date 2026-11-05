@@ -111,4 +111,5 @@
   PARRIED / HIT popups with tones; VICTORY (+growth) / DEFEAT banner, a tap restarts.
 - Not verified: a real mouse click / real touch device on the built player (scripted taps only, through the same
   `DuelSimulation.Tap`); audio.
-- Open: whether to add the duel rule in one line to `design/game-brief.md` (asked of the user).
+- Brief updated (user approved, 2026-11-05): `design/game-brief.md` Core loop now states the joust rule under the
+  boss duel, and the mounted-unit rule (only the protagonist and heroes ride, one per tile) under the battle.
