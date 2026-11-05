@@ -2,7 +2,8 @@
     "name": "KnightOrder.Editor",
     "rootNamespace": "KnightOrder.Editor",
     "references": [
-        "KnightOrder.Battle.Presentation"
+        "KnightOrder.Battle.Presentation",
+        "KnightOrder.Duel.Presentation"
     ],
     "includePlatforms": [
         "Editor"

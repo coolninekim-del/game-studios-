@@ -1,0 +1,19 @@
+{
+    "name": "KnightOrder.Duel.Presentation",
+    "rootNamespace": "KnightOrder.Duel.Presentation",
+    "references": [
+        "KnightOrder.Duel.Core",
+        "KnightOrder.Duel.Loading",
+        "KnightOrder.Battle.Timing",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

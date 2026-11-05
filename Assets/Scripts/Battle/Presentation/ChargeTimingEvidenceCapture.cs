@@ -16,7 +16,8 @@ namespace KnightOrder.Battle.Presentation
     /// <c>--evidence-story 003</c>: the same three steps per arrow volley group, saving window-open, block,
     /// hit and early shots, plus one shot the first time a charge cue and an arrow cue are visible together.
     /// When the battle ends before all shots are taken, it is restarted and the steps continue. Battle time is
-    /// paused while a screenshot is written.
+    /// paused while a screenshot is written. Any other <c>--evidence-story</c> (such as 004, the duel) is left to
+    /// that story's capture.
     /// Implements: Story 002, Story 003 (test evidence).
     ///
     /// Usage:
@@ -41,8 +42,10 @@ namespace KnightOrder.Battle.Presentation
         private static void Boot()
         {
             string directory = Arg("--evidence-dir");
-            if (directory == null)
+            string story = Arg("--evidence-story");
+            if (directory == null || (story != null && story != "002" && story != "003"))
             {
+                // Other stories' captures (for example the Story 004 duel) run in their own scenes.
                 return;
             }
 
@@ -52,7 +55,7 @@ namespace KnightOrder.Battle.Presentation
             DontDestroyOnLoad(go);
             var capture = go.AddComponent<ChargeTimingEvidenceCapture>();
             capture._directory = directory;
-            capture._arrowStory = Arg("--evidence-story") == "003";
+            capture._arrowStory = story == "003";
         }
 
         private static string Arg(string name)

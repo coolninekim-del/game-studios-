@@ -6,7 +6,9 @@
         "UnityEditor.TestRunner",
         "KnightOrder.Battle.Core",
         "KnightOrder.Battle.Timing",
-        "KnightOrder.Battle.Loading"
+        "KnightOrder.Battle.Loading",
+        "KnightOrder.Duel.Core",
+        "KnightOrder.Duel.Loading"
     ],
     "includePlatforms": [
         "Editor"
